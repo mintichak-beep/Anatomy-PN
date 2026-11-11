@@ -1,16 +1,12 @@
 export type SystemId =
-  | 'skeletal'
-  | 'muscular'
-  | 'cardiovascular'
-  | 'nervous'
   | 'respiratory'
   | 'digestive'
+  | 'nervous'
+  | 'female_reproductive'
+  | 'male_reproductive'
   | 'urinary'
-  | 'reproductive';
-
-export type ExamMode = 'spotter' | 'term';
-
-export type ExamSourceType = 'builtin' | 'custom_plates';
+  | 'cardiovascular'
+  | 'endocrine';
 
 export type ExamGrade = 0 | 1 | 2;
 
@@ -21,7 +17,6 @@ export interface AnatomySystem {
   nameTh: string;
   nameEn: string;
   shortCode: string;
-  plateImage: string | 'svg-brain';
   descriptionTh: string;
 }
 
@@ -31,13 +26,6 @@ export interface AnatomyTerm {
   termEn: string;
   termLatin?: string;
   termTh: string;
-  regionTh: string;
-  pinX?: number; // Percentage 0-100 across 4:3 plate (optional for custom prompt-only plates)
-  pinY?: number; // Percentage 0-100 down 4:3 plate
-  svgPartId?: string; // Optional highlight ID for BrainSvgPlate
-  clinicalHintTh: string;
-  rubric2Pt: string;
-  rubric1Pt: string;
   customImageUrl?: string;
   customPlateTitle?: string;
   isCustom?: boolean;
@@ -48,11 +36,6 @@ export interface CustomPlateTerm {
   systemId: SystemId;
   termEn: string;
   termTh: string;
-  clinicalHintTh: string;
-  rubric2Pt: string;
-  rubric1Pt: string;
-  pinX?: number;
-  pinY?: number;
 }
 
 export interface CustomPlate {
@@ -75,12 +58,9 @@ export interface ExamConfig {
   studentName: string;
   studentId: string;
   seatNumber: string;
-  sourceType: ExamSourceType;
-  selectedSystems: SystemId[];
   selectedCustomPlateIds: string[];
-  questionCount: number; // 0 means all available
+  termsPerSystem: number; // 1 = 1 term per system (actual exam), 2 = 2 per system, 0 = all
   secondsPerQuestion: number; // Default 30
-  examMode: ExamMode;
   showThaiInPrompt: boolean;
   shuffle: boolean;
   autoStartTimer: boolean;
@@ -103,7 +83,6 @@ export interface ExamSessionRecord {
   studentName: string;
   studentId: string;
   seatNumber?: string;
-  examMode: ExamMode;
   systemIds: SystemId[];
   totalQuestions: number;
   totalScore: number;

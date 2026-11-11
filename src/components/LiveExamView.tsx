@@ -6,8 +6,6 @@ import {
   Plus,
   Volume2,
   VolumeX,
-  Eye,
-  EyeOff,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -47,8 +45,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const [isRunning, setIsRunning] = useState(config.autoStartTimer);
   const [autoAdvance, setAutoAdvance] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [showAnswerKey, setShowAnswerKey] = useState(config.examMode === 'term');
-  const [showPinInTermMode, setShowPinInTermMode] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ExamAnswerRecord>>({});
   const [draftNote, setDraftNote] = useState('');
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -66,7 +62,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const isTimedOut = timeLeftMs <= 0;
   const isWarning = !isTimedOut && remainingSec <= 10;
 
-  // Countdown tick loop (100ms precision)
   useEffect(() => {
     if (!isRunning || timeLeftMs <= 0) return;
 
@@ -101,11 +96,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
       setCurrentIndex(index);
       const existing = answers[target.id];
       setDraftNote(existing?.note || '');
-      setShowAnswerKey(config.examMode === 'term');
-      setShowPinInTermMode(false);
 
       if (existing) {
-        // Already graded: pause timer with remaining/recorded state
         setIsRunning(false);
         const spentMs = existing.timeSpentSec * 1000;
         setTimeLeftMs(Math.max(0, totalMs - spentMs));
@@ -118,7 +110,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         setIsRunning(config.autoStartTimer);
       }
     },
-    [answers, config.autoStartTimer, config.examMode, config.secondsPerQuestion, totalMs, terms]
+    [answers, config.autoStartTimer, config.secondsPerQuestion, totalMs, terms]
   );
 
   const handleResetTimer = useCallback(() => {
@@ -206,7 +198,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
     }
   }, [currentIndex, loadQuestion]);
 
-  // Keyboard shortcuts for classroom speed (ignore when typing in note input)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -217,9 +208,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
       if (e.code === 'Space') {
         e.preventDefault();
         if (!isTimedOut) setIsRunning((r) => !r);
-      } else if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        setShowAnswerKey((s) => !s);
       } else if (e.key === '0') {
         e.preventDefault();
         handleGrade(0);
@@ -247,14 +235,13 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const gradedCount = Object.keys(answers).length;
   const currentTotalScore = Object.values(answers).reduce((acc, r) => acc + r.score, 0);
 
-  // SVG Ring calculation
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progressFraction);
 
   return (
     <div className="max-w-[1320px] mx-auto px-4 md:px-6 py-5">
-      {/* Top Session Strip (Unboxed metadata + End Exam CTA) */}
+      {/* Top Session Strip */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-slate-600">
           {config.seatNumber.trim() && (
@@ -334,26 +321,22 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
 
       {/* Main 2-Zone Sandbox */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-5 items-start">
-        {/* Left Zone: Anatomical Plate Canvas (~60%) */}
+        {/* Left Zone: Instructor Image + Question Term */}
         <div className="lg:col-span-7">
           <AnatomyStageCanvas
             key={currentTerm.id}
             system={currentSystem}
             term={currentTerm}
-            examMode={config.examMode}
-            showPinInTermMode={showPinInTermMode}
-            onTogglePinInTermMode={() => setShowPinInTermMode((p) => !p)}
             showThaiInPrompt={config.showThaiInPrompt}
           />
         </div>
 
-        {/* Right Zone: 30s Timer + Answer Key + 0-2 Rubric Grading Pad (~40%) */}
+        {/* Right Zone: 30s Timer + 0-2 Grading Pad (No Answer Key) */}
         <div className="lg:col-span-5 space-y-4">
           {/* 1. 30-Second Countdown Instrument */}
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                {/* Circular Gauge */}
                 <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
                   <svg className="w-20 h-20 -rotate-90" viewBox="0 0 88 88">
                     <circle
@@ -392,7 +375,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                   </span>
                 </div>
 
-                {/* Explicit Dual-Coded Status */}
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-semibold">
                     {isTimedOut ? (
@@ -423,7 +405,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                 </div>
               </div>
 
-              {/* Timer Controls */}
               <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-end gap-1.5 shrink-0">
                 <button
                   type="button"
@@ -436,7 +417,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                   }`}
                 >
                   {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{isRunning ? 'หยุด' : 'จับเวลาต่อ'}</span>
+                  <span>{isRunning ? 'หยุด' : 'เริ่มจับเวลา'}</span>
                 </button>
                 <div className="flex items-center gap-1">
                   <button
@@ -452,7 +433,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                     type="button"
                     onClick={handleResetTimer}
                     className="p-1.5 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer"
-                    title="รีเซ็ตเวลาเป็น 30 วินาที"
+                    title="รีเซ็ตเวลา"
                     aria-label="รีเซ็ตเวลา"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -461,7 +442,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               </div>
             </div>
 
-            {/* Linear Progress Bar */}
             <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-[width] duration-100 linear ${
@@ -472,64 +452,11 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             </div>
           </div>
 
-          {/* 2. Instructor Answer Key & Grading Criteria */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowAnswerKey((s) => !s)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-50/70 hover:bg-slate-100/80 transition-colors cursor-pointer"
-            >
-              <span className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                {showAnswerKey ? (
-                  <EyeOff className="w-4 h-4 text-sky-700" />
-                ) : (
-                  <Eye className="w-4 h-4 text-slate-500" />
-                )}
-                <span>เฉลยและเกณฑ์ตรวจสำหรับอาจารย์ (ปุ่ม R)</span>
-              </span>
-              <span className="text-xs text-sky-700 font-medium">
-                {showAnswerKey ? 'ซ่อนเฉลย' : 'เปิดดูเฉลย'}
-              </span>
-            </button>
-
-            {showAnswerKey ? (
-              <div className="p-4 border-t border-slate-200 space-y-3">
-                <div>
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h3 className="text-lg font-bold text-slate-900">{currentTerm.termEn}</h3>
-                    {currentTerm.termLatin && (
-                      <span className="text-xs italic text-slate-500">{currentTerm.termLatin}</span>
-                    )}
-                  </div>
-                  <p className="text-sm font-semibold text-sky-800 mt-0.5">{currentTerm.termTh}</p>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    {currentTerm.clinicalHintTh}
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-slate-100 space-y-2 text-xs">
-                  <div className="flex items-start gap-2">
-                    <span className="font-mono font-bold text-emerald-700 shrink-0 mt-0.5">2 คะแนน:</span>
-                    <span className="text-slate-700 leading-relaxed">{currentTerm.rubric2Pt}</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="font-mono font-bold text-amber-700 shrink-0 mt-0.5">1 คะแนน:</span>
-                    <span className="text-slate-700 leading-relaxed">{currentTerm.rubric1Pt}</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-                ซ่อนเฉลยไว้เพื่อป้องกันนักศึกษาเห็นคำตอบบนหน้าจอ กดปุ่มเปิดดูเฉลยหรือกด R เมื่อตรวจคำตอบ
-              </div>
-            )}
-          </div>
-
-          {/* 3. Instructor 0-2 Rubric Scoring Pad */}
+          {/* 2. Instructor 0-2 Scoring Pad */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900">
-                ให้คะแนนภาพนี้ (0–2 คะแนน)
+                อาจารย์ให้คะแนนข้อนี้ (0–2 คะแนน)
               </h3>
               {currentAnswer && (
                 <span className="text-xs font-mono tabular-nums font-semibold text-sky-700">
@@ -539,11 +466,10 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             </div>
 
             <div className="grid grid-cols-3 gap-2.5">
-              {/* 0 Points */}
               <button
                 type="button"
                 onClick={() => handleGrade(0)}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all cursor-pointer ${
                   currentAnswer?.score === 0
                     ? 'bg-rose-50 border-rose-600 ring-1 ring-rose-600 text-rose-900'
                     : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
@@ -560,11 +486,10 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                 <span className="text-xs font-medium mt-1">ไม่ถูก / ไม่ตอบ</span>
               </button>
 
-              {/* 1 Point */}
               <button
                 type="button"
                 onClick={() => handleGrade(1)}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all cursor-pointer ${
                   currentAnswer?.score === 1
                     ? 'bg-amber-50 border-amber-600 ring-1 ring-amber-600 text-amber-900'
                     : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
@@ -581,11 +506,10 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                 <span className="text-xs font-medium mt-1">ถูกบางส่วน</span>
               </button>
 
-              {/* 2 Points */}
               <button
                 type="button"
                 onClick={() => handleGrade(2)}
-                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all cursor-pointer ${
                   currentAnswer?.score === 2
                     ? 'bg-emerald-50 border-emerald-600 ring-1 ring-emerald-600 text-emerald-900'
                     : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
@@ -603,7 +527,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               </button>
             </div>
 
-            {/* Optional Note + Auto-advance toggle */}
             <div className="space-y-2">
               <input
                 type="text"
@@ -623,7 +546,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               </label>
             </div>
 
-            {/* Prev / Next Navigation */}
             <div className="flex items-center justify-between gap-3 pt-1">
               <button
                 type="button"
@@ -648,12 +570,12 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             </div>
           </div>
 
-          {/* 4. Item Progress Navigator Strip */}
+          {/* 3. Item Progress Strip */}
           <div className="bg-white border border-slate-200 rounded-xl p-3.5">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
               <span>ความคืบหน้าข้อสอบ</span>
               <span className="font-mono tabular-nums">
-                ตรวจแล้ว {gradedCount} / {terms.length} ภาพ
+                ตรวจแล้ว {gradedCount} / {terms.length} ข้อ
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -683,7 +605,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               })}
             </div>
             <p className="text-[11px] text-slate-400 mt-2.5">
-              คีย์ลัด: Space จับเวลา/หยุด · R เปิดเฉลย · กด 0, 1, 2 ให้คะแนน · Enter ข้อถัดไป
+              คีย์ลัด: Space จับเวลา/หยุด · กด 0, 1, 2 ให้คะแนน · Enter ข้อถัดไป
             </p>
           </div>
         </div>

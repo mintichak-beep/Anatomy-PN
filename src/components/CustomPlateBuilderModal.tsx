@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, X, Plus, Trash2, MapPin, Check, ListPlus } from 'lucide-react';
+import { Upload, X, Plus, Trash2, Check, ListPlus } from 'lucide-react';
 import {
   AnatomySystem,
   AnatomyTerm,
@@ -10,34 +10,61 @@ import {
 
 interface CustomPlateBuilderModalProps {
   systems: AnatomySystem[];
-  builtInTerms: AnatomyTerm[];
+  allTerms: AnatomyTerm[];
   initialPlate?: CustomPlate | null;
+  initialSystemId?: SystemId;
   onSave: (plate: CustomPlate) => void;
   onClose: () => void;
 }
 
 export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = ({
   systems,
-  builtInTerms,
+  allTerms,
   initialPlate,
+  initialSystemId,
   onSave,
   onClose,
 }) => {
+  const defaultSystemId = initialPlate?.systemId || initialSystemId || 'respiratory';
   const [title, setTitle] = useState(initialPlate?.title || '');
-  const [systemId, setSystemId] = useState<SystemId>(initialPlate?.systemId || 'skeletal');
+  const [systemId, setSystemId] = useState<SystemId>(defaultSystemId);
   const [imageUrl, setImageUrl] = useState(initialPlate?.imageUrl || '');
-  const [terms, setTerms] = useState<CustomPlateTerm[]>(initialPlate?.terms || []);
-  const [pinTargetTermId, setPinTargetTermId] = useState<string | null>(null);
+  const [terms, setTerms] = useState<CustomPlateTerm[]>(() => {
+    if (initialPlate) return initialPlate.terms;
+    // Pre-populate all terms for the chosen system so instructor can start immediately or uncheck
+    return allTerms
+      .filter((t) => t.systemId === defaultSystemId)
+      .map((t) => ({
+        id: `cpt-${t.id}`,
+        systemId: t.systemId,
+        termEn: t.termEn,
+        termTh: t.termTh,
+      }));
+  });
 
-  // Add term helper state
   const [addTab, setAddTab] = useState<'bank' | 'manual' | 'batch'>('bank');
   const [manualEn, setManualEn] = useState('');
   const [manualTh, setManualTh] = useState('');
-  const [manualHint, setManualHint] = useState('');
   const [batchText, setBatchText] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const systemBankTerms = builtInTerms.filter((t) => t.systemId === systemId);
+  const systemBankTerms = allTerms.filter((t) => t.systemId === systemId);
+
+  const handleSystemChange = (nextSys: SystemId) => {
+    setSystemId(nextSys);
+    if (!initialPlate) {
+      setTerms(
+        allTerms
+          .filter((t) => t.systemId === nextSys)
+          .map((t) => ({
+            id: `cpt-${t.id}`,
+            systemId: t.systemId,
+            termEn: t.termEn,
+            termTh: t.termTh,
+          }))
+      );
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,16 +102,15 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         prev.filter((t) => t.termEn.toLowerCase() !== bankTerm.termEn.toLowerCase())
       );
     } else {
-      const next: CustomPlateTerm = {
-        id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        systemId: bankTerm.systemId,
-        termEn: bankTerm.termEn,
-        termTh: bankTerm.termTh,
-        clinicalHintTh: bankTerm.clinicalHintTh,
-        rubric2Pt: bankTerm.rubric2Pt,
-        rubric1Pt: bankTerm.rubric1Pt,
-      };
-      setTerms((prev) => [...prev, next]);
+      setTerms((prev) => [
+        ...prev,
+        {
+          id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          systemId: bankTerm.systemId,
+          termEn: bankTerm.termEn,
+          termTh: bankTerm.termTh,
+        },
+      ]);
     }
   };
 
@@ -97,30 +123,29 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
           systemId: bt.systemId,
           termEn: bt.termEn,
           termTh: bt.termTh,
-          clinicalHintTh: bt.clinicalHintTh,
-          rubric2Pt: bt.rubric2Pt,
-          rubric1Pt: bt.rubric1Pt,
         });
       }
     }
     setTerms((prev) => [...prev, ...additions]);
   };
 
+  const clearSystemTerms = () => {
+    setTerms([]);
+  };
+
   const handleAddManual = () => {
     if (!manualEn.trim()) return;
-    const next: CustomPlateTerm = {
-      id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      systemId,
-      termEn: manualEn.trim(),
-      termTh: manualTh.trim() || 'คำศัพท์ที่อาจารย์กำหนด',
-      clinicalHintTh: manualHint.trim() || 'ระบุตำแหน่งและหน้าที่สำคัญของโครงสร้างนี้บนภาพ',
-      rubric2Pt: 'ระบุตำแหน่ง/ชื่อและอธิบายหน้าที่ถูกต้องครบถ้วนภายใน 30 วินาที',
-      rubric1Pt: 'ระบุได้บางส่วนหรืออธิบายหน้าที่ไม่สมบูรณ์',
-    };
-    setTerms((prev) => [...prev, next]);
+    setTerms((prev) => [
+      ...prev,
+      {
+        id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        systemId,
+        termEn: manualEn.trim(),
+        termTh: manualTh.trim(),
+      },
+    ]);
     setManualEn('');
     setManualTh('');
-    setManualHint('');
   };
 
   const handleAddBatch = () => {
@@ -136,10 +161,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         id: `cpt-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 5)}`,
         systemId,
         termEn: enPart,
-        termTh: thPart || 'คำศัพท์ที่อาจารย์กำหนด',
-        clinicalHintTh: 'ระบุตำแหน่งและอธิบายหน้าที่ของโครงสร้างนี้บนภาพ',
-        rubric2Pt: 'ระบุตำแหน่ง/ชื่อและอธิบายหน้าที่ถูกต้องครบถ้วนภายใน 30 วินาที',
-        rubric1Pt: 'ระบุได้บางส่วนหรืออธิบายหน้าที่ไม่สมบูรณ์',
+        termTh: thPart || '',
       };
     });
 
@@ -147,26 +169,8 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
     setBatchText('');
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!pinTargetTermId) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = Number((((e.clientX - rect.left) / rect.width) * 100).toFixed(1));
-    const y = Number((((e.clientY - rect.top) / rect.height) * 100).toFixed(1));
-    setTerms((prev) =>
-      prev.map((t) => (t.id === pinTargetTermId ? { ...t, pinX: x, pinY: y } : t))
-    );
-    setPinTargetTermId(null);
-  };
-
-  const handleClearPin = (id: string) => {
-    setTerms((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, pinX: undefined, pinY: undefined } : t))
-    );
-  };
-
   const handleRemoveTerm = (id: string) => {
     setTerms((prev) => prev.filter((t) => t.id !== id));
-    if (pinTargetTermId === id) setPinTargetTermId(null);
   };
 
   const handleSavePlate = (e: React.FormEvent) => {
@@ -176,7 +180,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
       return;
     }
     if (terms.length === 0) {
-      setErrorMsg('กรุณาเลือกหรือเพิ่มคำศัพท์อย่างน้อย 1 คำเพื่อให้ระบบใช้ถามในภาพนี้');
+      setErrorMsg('กรุณาเลือกหรือเพิ่มคำศัพท์อย่างน้อย 1 คำเพื่อให้ระบบใช้สุ่มถาม');
       return;
     }
 
@@ -184,7 +188,8 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
       id: initialPlate?.id || `plate-${Date.now()}`,
       title:
         title.trim() ||
-        `ชุดภาพ${systems.find((s) => s.id === systemId)?.nameTh || 'กายวิภาค'}`,
+        systems.find((s) => s.id === systemId)?.nameTh ||
+        'ภาพกายวิภาค',
       systemId,
       imageUrl,
       terms,
@@ -199,10 +204,10 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {initialPlate ? 'แก้ไขชุดภาพและคำศัพท์' : 'กำหนดภาพเอง เพื่อให้ระบบสุ่มถามคำศัพท์'}
+              {initialPlate ? 'แก้ไขภาพและคำศัพท์ที่ใช้ถาม' : 'อัปโหลดภาพของอาจารย์และกำหนดคำศัพท์'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              อัปโหลดภาพของคุณ แล้วเลือกหรือพิมพ์คำศัพท์ที่ต้องการให้ระบบสุ่มถามนักศึกษาบนภาพนี้
+              อัปโหลดภาพของคุณ แล้วเลือกคำศัพท์ประจำระบบที่ต้องการให้ระบบสุ่มถาม (ไม่มีเฉลยขึ้นบนหน้าจอ)
             </p>
           </div>
           <button
@@ -216,83 +221,53 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         </div>
 
         <form onSubmit={handleSavePlate} className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-5">
-          {/* Left Side: Image Upload & Optional Pin Placement */}
-          <div className="lg:col-span-6 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  ชื่อชุดภาพ
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="เช่น หุ่นจำลองหัวใจ Lab 2"
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  ระบบอวัยวะ
-                </label>
-                <select
-                  value={systemId}
-                  onChange={(e) => setSystemId(e.target.value as SystemId)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600"
-                >
-                  {systems.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nameTh}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Left: Image Upload */}
+          <div className="lg:col-span-5 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                ระบบอวัยวะ (8 ระบบ)
+              </label>
+              <select
+                value={systemId}
+                onChange={(e) => handleSystemChange(e.target.value as SystemId)}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+              >
+                {systems.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nameTh} ({s.nameEn})
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Image Preview Box */}
-            <div
-              onClick={handleImageClick}
-              className={`relative w-full aspect-[4/3] bg-slate-100 border rounded-xl overflow-hidden flex items-center justify-center ${
-                pinTargetTermId
-                  ? 'border-sky-600 ring-2 ring-sky-500 cursor-crosshair'
-                  : 'border-slate-200'
-              }`}
-            >
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                ชื่อชุดภาพ (ไม่บังคับ)
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="เช่น ภาพหุ่นจำลองหัวใจ ชุดที่ 1"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+              />
+            </div>
+
+            <div className="relative w-full aspect-[4/3] bg-slate-100 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center">
               {imageUrl ? (
-                <>
-                  <img
-                    src={imageUrl}
-                    alt="Custom anatomy plate"
-                    className="w-full h-full object-contain bg-[#F5F2EA]"
-                  />
-                  {/* Render pins for terms that have coordinates */}
-                  {terms.map((t, idx) =>
-                    t.pinX !== undefined && t.pinY !== undefined ? (
-                      <div
-                        key={t.id}
-                        className="absolute pointer-events-none flex items-center gap-1"
-                        style={{
-                          left: `${t.pinX}%`,
-                          top: `${t.pinY}%`,
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
-                        <span className="w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-mono font-bold flex items-center justify-center border border-white shadow">
-                          {idx + 1}
-                        </span>
-                      </div>
-                    ) : null
-                  )}
-                </>
+                <img
+                  src={imageUrl}
+                  alt="Instructor plate preview"
+                  className="w-full h-full object-contain"
+                />
               ) : (
-                <label className="flex flex-col items-center justify-center p-6 text-center cursor-pointer w-full h-full hover:bg-slate-200/50 transition-colors">
+                <label className="flex flex-col items-center justify-center p-6 text-center cursor-pointer w-full h-full hover:bg-slate-200/60 transition-colors">
                   <Upload className="w-8 h-8 text-slate-400 mb-2" />
                   <span className="text-sm font-semibold text-slate-700">
-                    คลิกเพื่ออัปโหลดภาพกายวิภาคของคุณ
+                    คลิกเพื่ออัปโหลดภาพของคุณ
                   </span>
                   <span className="text-xs text-slate-500 mt-1">
-                    รองรับไฟล์ JPG, PNG, WebP (ภาพหุ่นจำลอง ภาพอาจารย์ใหญ่ หรือแผนภาพไร้ตัวอักษร)
+                    รองรับไฟล์ JPG, PNG, WebP
                   </span>
                   <input
                     type="file"
@@ -304,26 +279,10 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
               )}
             </div>
 
-            {pinTargetTermId && (
-              <div className="px-3 py-2 rounded-lg bg-sky-50 border border-sky-200 text-xs text-sky-900 flex items-center justify-between">
-                <span>
-                  กำลังปักหมุดเฉลยให้:{' '}
-                  <strong>{terms.find((t) => t.id === pinTargetTermId)?.termEn}</strong> — คลิกบนภาพได้เลย
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPinTargetTermId(null)}
-                  className="text-sky-700 font-semibold hover:underline cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-              </div>
-            )}
-
             {imageUrl && (
               <label className="inline-flex items-center justify-center gap-2 w-full px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer">
                 <Upload className="w-3.5 h-3.5 text-slate-500" />
-                <span>เปลี่ยนรูปภาพใหม่</span>
+                <span>เปลี่ยนรูปภาพ</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -334,11 +293,10 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
             )}
           </div>
 
-          {/* Right Side: Term Picker & Attached Term List */}
-          <div className="lg:col-span-6 flex flex-col justify-between space-y-4">
+          {/* Right: Terms to ask on this image */}
+          <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
-              {/* Segmented Tabs to add terms */}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-slate-800">
                   คำศัพท์ที่ต้องการให้ระบบถามบนภาพนี้
                 </span>
@@ -350,7 +308,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                       addTab === 'bank' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
                     }`}
                   >
-                    เลือกจากคลังระบบ
+                    คำศัพท์ระบบนี้
                   </button>
                   <button
                     type="button"
@@ -359,7 +317,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                       addTab === 'manual' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
                     }`}
                   >
-                    พิมพ์ทีละคำ
+                    พิมพ์เพิ่มเอง
                   </button>
                   <button
                     type="button"
@@ -373,23 +331,31 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                 </div>
               </div>
 
-              {/* Tab 1: Select from System Bank */}
               {addTab === 'bank' && (
                 <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-600">
-                      คำศัพท์ในระบบ{' '}
+                      คำศัพท์ใน{' '}
                       <strong>{systems.find((s) => s.id === systemId)?.nameTh}</strong>
                     </span>
-                    <button
-                      type="button"
-                      onClick={selectAllSystemBankTerms}
-                      className="text-sky-700 font-semibold hover:underline cursor-pointer"
-                    >
-                      + เลือกทั้งหมดในระบบนี้
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={selectAllSystemBankTerms}
+                        className="text-sky-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        เลือกทั้งหมด
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSystemTerms}
+                        className="text-slate-500 hover:underline cursor-pointer"
+                      >
+                        ล้างคำศัพท์
+                      </button>
+                    </div>
                   </div>
-                  <div className="max-h-36 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <div className="max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {systemBankTerms.map((bt) => {
                       const active = isBankTermAdded(bt);
                       return (
@@ -412,54 +378,41 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                 </div>
               )}
 
-              {/* Tab 2: Manual Single Term */}
               {addTab === 'manual' && (
-                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={manualEn}
-                      onChange={(e) => setManualEn(e.target.value)}
-                      placeholder="คำศัพท์ EN / Latin (เช่น Femur)"
-                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
-                    />
-                    <input
-                      type="text"
-                      value={manualTh}
-                      onChange={(e) => setManualTh(e.target.value)}
-                      placeholder="ชื่อไทย (ไม่บังคับ)"
-                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={manualHint}
-                      onChange={(e) => setManualHint(e.target.value)}
-                      placeholder="คำใบ้/เฉลยสั้นสำหรับอาจารย์ (ไม่บังคับ)"
-                      className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddManual}
-                      disabled={!manualEn.trim()}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 rounded-lg cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>เพิ่มคำ</span>
-                    </button>
-                  </div>
+                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={manualEn}
+                    onChange={(e) => setManualEn(e.target.value)}
+                    placeholder="คำศัพท์ EN / Latin (เช่น Femur)"
+                    className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                  <input
+                    type="text"
+                    value={manualTh}
+                    onChange={(e) => setManualTh(e.target.value)}
+                    placeholder="ชื่อไทย (ไม่บังคับ)"
+                    className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddManual}
+                    disabled={!manualEn.trim()}
+                    className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 rounded-lg cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>เพิ่มคำ</span>
+                  </button>
                 </div>
               )}
 
-              {/* Tab 3: Batch Paste */}
               {addTab === 'batch' && (
                 <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 space-y-2">
                   <textarea
                     rows={3}
                     value={batchText}
                     onChange={(e) => setBatchText(e.target.value)}
-                    placeholder="พิมพ์หลายคำคั่นด้วยเครื่องหมายจุลภาค (,) หรือขึ้นบรรทัดใหม่ เช่น&#10;Right Atrium | หัวใจห้องบนขวา&#10;Left Ventricle | หัวใจห้องล่างซ้าย&#10;Arch of Aorta"
+                    placeholder="พิมพ์หลายคำคั่นด้วยเครื่องหมายจุลภาค (,) หรือขึ้นบรรทัดใหม่ เช่น&#10;Right Atrium&#10;Left Ventricle&#10;Arch of Aorta"
                     className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
                   />
                   <div className="flex justify-end">
@@ -470,84 +423,49 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 rounded-lg cursor-pointer"
                     >
                       <ListPlus className="w-3.5 h-3.5" />
-                      <span>เพิ่มทั้งหมดเข้าภาพนี้</span>
+                      <span>เพิ่มทั้งหมด</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Attached Terms List */}
+              {/* Selected Terms List */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-700">
-                    คำศัพท์ที่จะใช้สุ่มถามบนภาพนี้ ({terms.length} คำ)
+                    รายการคำศัพท์ที่จะใช้ถาม ({terms.length} คำ)
                   </span>
-                  {terms.length > 0 && (
-                    <span className="text-[11px] text-slate-500">
-                      ปักหมุดเฉลยบนภาพหรือไม่ปักก็ได้
-                    </span>
-                  )}
                 </div>
                 <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
                   {terms.length === 0 ? (
                     <div className="p-6 text-center text-xs text-slate-400">
-                      ยังไม่มีคำศัพท์ในภาพนี้ เลือกจากด้านบนได้เลย
+                      ยังไม่มีคำศัพท์ในภาพนี้
                     </div>
                   ) : (
-                    terms.map((t, idx) => {
-                      const hasPin = t.pinX !== undefined && t.pinY !== undefined;
-                      const isPinning = pinTargetTermId === t.id;
-                      return (
-                        <div
-                          key={t.id}
-                          className="px-3 py-2 flex items-center justify-between gap-2 text-xs hover:bg-slate-50"
-                        >
-                          <div className="min-w-0 flex items-center gap-2">
-                            <span className="font-mono tabular-nums text-slate-400 w-5 shrink-0">
-                              {idx + 1}.
-                            </span>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 truncate">{t.termEn}</p>
-                              <p className="text-[11px] text-slate-500 truncate">{t.termTh}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {imageUrl && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  hasPin
-                                    ? handleClearPin(t.id)
-                                    : setPinTargetTermId(isPinning ? null : t.id)
-                                }
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border cursor-pointer ${
-                                  isPinning
-                                    ? 'bg-sky-600 text-white border-sky-600'
-                                    : hasPin
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                                }`}
-                                title={hasPin ? 'คลิกเพื่อลบหมุด' : 'คลิกแล้วจิ้มบนภาพเพื่อปักหมุดเฉลย'}
-                              >
-                                <MapPin className="w-3 h-3" />
-                                <span>
-                                  {isPinning ? 'จิ้มบนภาพ...' : hasPin ? 'มีหมุดแล้ว' : 'ปักหมุด'}
-                                </span>
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTerm(t.id)}
-                              className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
-                              aria-label="ลบคำศัพท์"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                    terms.map((t, idx) => (
+                      <div
+                        key={t.id}
+                        className="px-3 py-2 flex items-center justify-between gap-2 text-xs hover:bg-slate-50"
+                      >
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="font-mono tabular-nums text-slate-400 w-5 shrink-0">
+                            {idx + 1}.
+                          </span>
+                          <span className="font-semibold text-slate-900 truncate">{t.termEn}</span>
+                          {t.termTh && (
+                            <span className="text-slate-500 truncate">— {t.termTh}</span>
+                          )}
                         </div>
-                      );
-                    })
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTerm(t.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer shrink-0"
+                          aria-label="ลบคำศัพท์"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>

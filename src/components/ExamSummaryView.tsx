@@ -133,10 +133,6 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-1.5">
             <span>สรุปผลการสอบ Oral Test</span>
             <span aria-hidden="true">·</span>
-            <span>
-              {session.examMode === 'spotter' ? 'โหมดชี้ภาพตอบคำศัพท์' : 'โหมดแสดงคำศัพท์ตอบอธิบาย'}
-            </span>
-            <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums">
               {new Date(session.completedAt).toLocaleString('th-TH')}
             </span>

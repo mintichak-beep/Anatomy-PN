@@ -8,6 +8,7 @@ import {
   ExamGrade,
   ExamSessionRecord,
   StudentRosterEntry,
+  SystemId,
 } from './types/anatomy';
 import { ANATOMY_SYSTEMS, BUILT_IN_TERMS } from './data/anatomyData';
 import { SetupLobby } from './components/SetupLobby';
@@ -75,12 +76,9 @@ export default function App() {
     studentName: '',
     studentId: '',
     seatNumber: '',
-    sourceType: 'builtin',
-    selectedSystems: ['skeletal', 'cardiovascular', 'respiratory'],
-    selectedCustomPlateIds: [],
-    questionCount: 10,
+    selectedCustomPlateIds: customPlates.map((p) => p.id),
+    termsPerSystem: 1,
     secondsPerQuestion: 30,
-    examMode: 'spotter',
     showThaiInPrompt: false,
     shuffle: true,
     autoStartTimer: true,
@@ -90,6 +88,7 @@ export default function App() {
   const [activeSession, setActiveSession] = useState<ExamSessionRecord | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingPlate, setEditingPlate] = useState<CustomPlate | null>(null);
+  const [builderDefaultSystemId, setBuilderDefaultSystemId] = useState<SystemId>('respiratory');
   const [rosterOpen, setRosterOpen] = useState(false);
 
   useEffect(() => {
@@ -130,34 +129,42 @@ export default function App() {
   );
 
   const buildExamPool = (cfg: ExamConfig): AnatomyTerm[] => {
-    if (cfg.sourceType === 'custom_plates') {
-      const selectedPlates = customPlates.filter((p) =>
-        cfg.selectedCustomPlateIds.includes(p.id)
-      );
-      const flattened: AnatomyTerm[] = [];
-      for (const plate of selectedPlates) {
+    const selectedPlates = customPlates.filter((p) =>
+      cfg.selectedCustomPlateIds.includes(p.id)
+    );
+
+    const perSystemResult: AnatomyTerm[] = [];
+
+    for (const sys of ANATOMY_SYSTEMS) {
+      const sysPlates = selectedPlates.filter((p) => p.systemId === sys.id);
+      const sysPool: AnatomyTerm[] = [];
+
+      for (const plate of sysPlates) {
         for (const pt of plate.terms) {
-          flattened.push({
+          sysPool.push({
             id: `${plate.id}-${pt.id}`,
             systemId: pt.systemId,
             termEn: pt.termEn,
             termTh: pt.termTh,
-            regionTh: plate.title,
-            pinX: pt.pinX,
-            pinY: pt.pinY,
-            clinicalHintTh: pt.clinicalHintTh,
-            rubric2Pt: pt.rubric2Pt,
-            rubric1Pt: pt.rubric1Pt,
             customImageUrl: plate.imageUrl,
             customPlateTitle: plate.title,
             isCustom: true,
           });
         }
       }
-      return flattened;
+
+      if (sysPool.length === 0) continue;
+
+      // Always randomize within the system so each student gets a random term for that system
+      const randomizedSysPool = shuffleArray(sysPool);
+      const chosen =
+        cfg.termsPerSystem === 0
+          ? randomizedSysPool
+          : randomizedSysPool.slice(0, cfg.termsPerSystem);
+      perSystemResult.push(...chosen);
     }
 
-    return allTerms.filter((t) => cfg.selectedSystems.includes(t.systemId));
+    return perSystemResult;
   };
 
   const startExamWithConfig = (cfg: ExamConfig) => {
@@ -165,10 +172,7 @@ export default function App() {
     if (pool.length === 0) return;
 
     const ordered = cfg.shuffle ? shuffleArray(pool) : pool;
-    const sliced =
-      cfg.questionCount === 0 ? ordered : ordered.slice(0, cfg.questionCount);
-
-    setActiveExamTerms(sliced);
+    setActiveExamTerms(ordered);
     setView('exam');
   };
 
@@ -181,7 +185,6 @@ export default function App() {
       studentName: config.studentName.trim() || 'นักศึกษา (ไม่ระบุชื่อ)',
       studentId: config.studentId.trim(),
       seatNumber: config.seatNumber.trim(),
-      examMode: config.examMode,
       systemIds: systemIdsInExam,
       totalQuestions: answers.length,
       totalScore,
@@ -210,6 +213,34 @@ export default function App() {
     setCustomTerms((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleQuickUploadForSystem = (systemId: SystemId, imageUrl: string) => {
+    const sys = ANATOMY_SYSTEMS.find((s) => s.id === systemId);
+    const sysTerms = allTerms
+      .filter((t) => t.systemId === systemId)
+      .map((t) => ({
+        id: `cpt-${t.id}`,
+        systemId: t.systemId,
+        termEn: t.termEn,
+        termTh: t.termTh,
+      }));
+
+    const existingCount = customPlates.filter((p) => p.systemId === systemId).length;
+    const newPlate: CustomPlate = {
+      id: `plate-${Date.now()}`,
+      title: existingCount > 0 ? `${sys?.nameTh || systemId} (ชุดที่ ${existingCount + 1})` : sys?.nameTh || systemId,
+      systemId,
+      imageUrl,
+      terms: sysTerms,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCustomPlates((prev) => [newPlate, ...prev]);
+    setConfig((prev) => ({
+      ...prev,
+      selectedCustomPlateIds: [...prev.selectedCustomPlateIds, newPlate.id],
+    }));
+  };
+
   const handleSaveCustomPlate = (plate: CustomPlate) => {
     setCustomPlates((prev) => {
       const exists = prev.some((p) => p.id === plate.id);
@@ -220,8 +251,6 @@ export default function App() {
     });
     setConfig((prev) => ({
       ...prev,
-      sourceType: 'custom_plates',
-      examMode: 'term',
       selectedCustomPlateIds: prev.selectedCustomPlateIds.includes(plate.id)
         ? prev.selectedCustomPlateIds
         : [...prev.selectedCustomPlateIds, plate.id],
@@ -274,7 +303,6 @@ export default function App() {
       {/* Top Bar Contract: 3 zones separated by gap-8 */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200">
         <div className="max-w-[1320px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-8">
-          {/* Zone 1: Single-element Brand Wordmark */}
           <button
             type="button"
             onClick={() => setView('setup')}
@@ -283,7 +311,6 @@ export default function App() {
             Anatomia Oral
           </button>
 
-          {/* Zone 2: Clean Single-Line Nav Links */}
           <nav className="hidden md:flex items-center gap-6">
             <button
               type="button"
@@ -306,7 +333,7 @@ export default function App() {
               onClick={() => setView('library')}
               className={navLinkClass(view === 'library')}
             >
-              คลังภาพคำศัพท์
+              คลังคำศัพท์ 8 ระบบ
             </button>
             <button
               type="button"
@@ -317,7 +344,6 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Zone 3: 1 Primary Action */}
           <div className="shrink-0">
             {view === 'exam' ? (
               <button
@@ -358,7 +384,7 @@ export default function App() {
               view === 'library' ? 'text-sky-700 font-semibold' : 'text-slate-600'
             }`}
           >
-            คลังคำศัพท์
+            คลังคำศัพท์ 8 ระบบ
           </button>
           <button
             type="button"
@@ -385,8 +411,10 @@ export default function App() {
             onChangeConfig={setConfig}
             onStartExam={() => startExamWithConfig(config)}
             onOpenLibrary={() => setView('library')}
-            onOpenCustomPlateBuilder={(plate) => {
+            onQuickUploadForSystem={handleQuickUploadForSystem}
+            onOpenCustomPlateBuilder={(plate, sysId) => {
               setEditingPlate(plate || null);
+              setBuilderDefaultSystemId(sysId || plate?.systemId || 'respiratory');
               setBuilderOpen(true);
             }}
             onDeleteCustomPlate={handleDeleteCustomPlate}
@@ -443,8 +471,9 @@ export default function App() {
       {builderOpen && (
         <CustomPlateBuilderModal
           systems={ANATOMY_SYSTEMS}
-          builtInTerms={BUILT_IN_TERMS}
+          allTerms={allTerms}
           initialPlate={editingPlate}
+          initialSystemId={builderDefaultSystemId}
           onSave={handleSaveCustomPlate}
           onClose={() => {
             setBuilderOpen(false);
