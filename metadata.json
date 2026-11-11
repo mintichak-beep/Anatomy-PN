@@ -1,0 +1,8 @@
+{
+  "name": "Anatomia Oral — ระบบสอบปากเปล่ากายวิภาคศาสตร์",
+  "description": "เกมและการสอบ Oral Test วิชา Anatomy สำหรับอาจารย์และนักศึกษา จับเวลาคำละ 30 วินาที พร้อมระบบให้คะแนน 0–2 คะแนนต่อภาพ",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

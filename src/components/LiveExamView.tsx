@@ -1,0 +1,693 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Plus,
+  Volume2,
+  VolumeX,
+  Eye,
+  EyeOff,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Clock,
+  Flag,
+} from 'lucide-react';
+import {
+  AnatomySystem,
+  AnatomyTerm,
+  ExamAnswerRecord,
+  ExamConfig,
+  ExamGrade,
+} from '../types/anatomy';
+import { AnatomyStageCanvas } from './AnatomyStageCanvas';
+import { playScoreSound, playTickSound, playTimeUpSound } from '../utils/sound';
+
+interface LiveExamViewProps {
+  terms: AnatomyTerm[];
+  systems: AnatomySystem[];
+  config: ExamConfig;
+  onCompleteExam: (answers: ExamAnswerRecord[], startedAt: string) => void;
+  onCancelExam: () => void;
+}
+
+export const LiveExamView: React.FC<LiveExamViewProps> = ({
+  terms,
+  systems,
+  config,
+  onCompleteExam,
+  onCancelExam,
+}) => {
+  const [startedAt] = useState(() => new Date().toISOString());
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeLeftMs, setTimeLeftMs] = useState(config.secondsPerQuestion * 1000);
+  const [isRunning, setIsRunning] = useState(config.autoStartTimer);
+  const [autoAdvance, setAutoAdvance] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showAnswerKey, setShowAnswerKey] = useState(config.examMode === 'term');
+  const [showPinInTermMode, setShowPinInTermMode] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, ExamAnswerRecord>>({});
+  const [draftNote, setDraftNote] = useState('');
+  const [confirmEnd, setConfirmEnd] = useState(false);
+
+  const lastSecondRef = useRef<number>(config.secondsPerQuestion);
+  const timeUpPlayedRef = useRef<boolean>(false);
+
+  const currentTerm = terms[currentIndex];
+  const currentSystem = systems.find((s) => s.id === currentTerm.systemId) || systems[0];
+  const currentAnswer = answers[currentTerm.id];
+
+  const totalMs = config.secondsPerQuestion * 1000;
+  const remainingSec = Math.max(0, timeLeftMs / 1000);
+  const progressFraction = Math.max(0, Math.min(1, timeLeftMs / totalMs));
+  const isTimedOut = timeLeftMs <= 0;
+  const isWarning = !isTimedOut && remainingSec <= 10;
+
+  // Countdown tick loop (100ms precision)
+  useEffect(() => {
+    if (!isRunning || timeLeftMs <= 0) return;
+
+    const interval = window.setInterval(() => {
+      setTimeLeftMs((prev) => {
+        const next = Math.max(0, prev - 100);
+        const nextWholeSec = Math.ceil(next / 1000);
+
+        if (nextWholeSec !== lastSecondRef.current) {
+          lastSecondRef.current = nextWholeSec;
+          if (nextWholeSec > 0 && nextWholeSec <= 5) {
+            playTickSound(isMuted);
+          }
+        }
+
+        if (next === 0 && !timeUpPlayedRef.current) {
+          timeUpPlayedRef.current = true;
+          playTimeUpSound(isMuted);
+        }
+
+        return next;
+      });
+    }, 100);
+
+    return () => window.clearInterval(interval);
+  }, [isRunning, timeLeftMs, isMuted]);
+
+  const loadQuestion = useCallback(
+    (index: number) => {
+      const target = terms[index];
+      if (!target) return;
+      setCurrentIndex(index);
+      const existing = answers[target.id];
+      setDraftNote(existing?.note || '');
+      setShowAnswerKey(config.examMode === 'term');
+      setShowPinInTermMode(false);
+
+      if (existing) {
+        // Already graded: pause timer with remaining/recorded state
+        setIsRunning(false);
+        const spentMs = existing.timeSpentSec * 1000;
+        setTimeLeftMs(Math.max(0, totalMs - spentMs));
+        lastSecondRef.current = Math.ceil(Math.max(0, totalMs - spentMs) / 1000);
+        timeUpPlayedRef.current = existing.timedOut;
+      } else {
+        setTimeLeftMs(totalMs);
+        lastSecondRef.current = config.secondsPerQuestion;
+        timeUpPlayedRef.current = false;
+        setIsRunning(config.autoStartTimer);
+      }
+    },
+    [answers, config.autoStartTimer, config.examMode, config.secondsPerQuestion, totalMs, terms]
+  );
+
+  const handleResetTimer = useCallback(() => {
+    setTimeLeftMs(totalMs);
+    lastSecondRef.current = config.secondsPerQuestion;
+    timeUpPlayedRef.current = false;
+    setIsRunning(true);
+  }, [config.secondsPerQuestion, totalMs]);
+
+  const handleAddFiveSeconds = () => {
+    setTimeLeftMs((prev) => prev + 5000);
+    timeUpPlayedRef.current = false;
+  };
+
+  const handleGrade = useCallback(
+    (score: ExamGrade) => {
+      const elapsedSec = Number(
+        Math.min(config.secondsPerQuestion, Math.max(0, (totalMs - timeLeftMs) / 1000)).toFixed(1)
+      );
+      const record: ExamAnswerRecord = {
+        termId: currentTerm.id,
+        systemId: currentTerm.systemId,
+        termEn: currentTerm.termEn,
+        termTh: currentTerm.termTh,
+        score,
+        timeSpentSec: elapsedSec,
+        timedOut: timeLeftMs <= 0,
+        note: draftNote.trim(),
+        gradedAt: new Date().toISOString(),
+      };
+
+      setAnswers((prev) => ({ ...prev, [currentTerm.id]: record }));
+      setIsRunning(false);
+      playScoreSound(score, isMuted);
+
+      if (autoAdvance && currentIndex < terms.length - 1) {
+        window.setTimeout(() => {
+          loadQuestion(currentIndex + 1);
+        }, 260);
+      }
+    },
+    [autoAdvance, config.secondsPerQuestion, currentIndex, currentTerm, draftNote, isMuted, loadQuestion, terms.length, timeLeftMs, totalMs]
+  );
+
+  const handleNoteChange = (val: string) => {
+    setDraftNote(val);
+    if (currentAnswer) {
+      setAnswers((prev) => ({
+        ...prev,
+        [currentTerm.id]: { ...currentAnswer, note: val },
+      }));
+    }
+  };
+
+  const handleFinish = useCallback(() => {
+    const orderedRecords: ExamAnswerRecord[] = terms.map((term) => {
+      const existing = answers[term.id];
+      if (existing) return existing;
+      return {
+        termId: term.id,
+        systemId: term.systemId,
+        termEn: term.termEn,
+        termTh: term.termTh,
+        score: 0,
+        timeSpentSec: 0,
+        timedOut: false,
+        note: 'ไม่ได้บันทึกคะแนน',
+        gradedAt: new Date().toISOString(),
+      };
+    });
+    onCompleteExam(orderedRecords, startedAt);
+  }, [answers, onCompleteExam, startedAt, terms]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < terms.length - 1) {
+      loadQuestion(currentIndex + 1);
+    } else {
+      handleFinish();
+    }
+  }, [currentIndex, handleFinish, loadQuestion, terms.length]);
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      loadQuestion(currentIndex - 1);
+    }
+  }, [currentIndex, loadQuestion]);
+
+  // Keyboard shortcuts for classroom speed (ignore when typing in note input)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!isTimedOut) setIsRunning((r) => !r);
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        setShowAnswerKey((s) => !s);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        handleGrade(0);
+      } else if (e.key === '1') {
+        e.preventDefault();
+        handleGrade(1);
+      } else if (e.key === '2') {
+        e.preventDefault();
+        handleGrade(2);
+      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        if (currentAnswer || currentIndex < terms.length - 1) {
+          handleNext();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrev();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [currentAnswer, currentIndex, handleGrade, handleNext, handlePrev, isTimedOut, terms.length]);
+
+  const gradedCount = Object.keys(answers).length;
+  const currentTotalScore = Object.values(answers).reduce((acc, r) => acc + r.score, 0);
+
+  // SVG Ring calculation
+  const radius = 38;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progressFraction);
+
+  return (
+    <div className="max-w-[1320px] mx-auto px-4 md:px-6 py-5">
+      {/* Top Session Strip (Unboxed metadata + End Exam CTA) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-slate-600">
+          {config.seatNumber.trim() && (
+            <>
+              <span className="font-mono tabular-nums font-semibold text-slate-800">
+                เลขที่ {config.seatNumber.trim()}
+              </span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
+          <span className="font-semibold text-slate-900">
+            {config.studentName.trim() || 'นักศึกษา (ไม่ระบุชื่อ)'}
+          </span>
+          {config.studentId.trim() && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono tabular-nums">{config.studentId.trim()}</span>
+            </>
+          )}
+          <span aria-hidden="true">·</span>
+          <span className="font-mono tabular-nums font-semibold text-sky-800">
+            ข้อที่ {currentIndex + 1} / {terms.length}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="font-mono tabular-nums">
+            คะแนนสะสม {currentTotalScore} / {terms.length * 2}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsMuted((m) => !m)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label={isMuted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'}
+          >
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+            <span>{isMuted ? 'ปิดเสียง' : 'เปิดเสียง'}</span>
+          </button>
+
+          {confirmEnd ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleFinish}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+              >
+                ยืนยันสรุปคะแนน ({gradedCount}/{terms.length})
+              </button>
+              <button
+                type="button"
+                onClick={onCancelExam}
+                className="px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+              >
+                ยกเลิกการสอบ
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmEnd(false)}
+                className="px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                กลับ
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmEnd(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              <Flag className="w-3.5 h-3.5" />
+              <span>จบและสรุปผล</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Main 2-Zone Sandbox */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-5 items-start">
+        {/* Left Zone: Anatomical Plate Canvas (~60%) */}
+        <div className="lg:col-span-7">
+          <AnatomyStageCanvas
+            key={currentTerm.id}
+            system={currentSystem}
+            term={currentTerm}
+            examMode={config.examMode}
+            showPinInTermMode={showPinInTermMode}
+            onTogglePinInTermMode={() => setShowPinInTermMode((p) => !p)}
+            showThaiInPrompt={config.showThaiInPrompt}
+          />
+        </div>
+
+        {/* Right Zone: 30s Timer + Answer Key + 0-2 Rubric Grading Pad (~40%) */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* 1. 30-Second Countdown Instrument */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Circular Gauge */}
+                <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 88 88">
+                    <circle
+                      cx="44"
+                      cy="44"
+                      r={radius}
+                      fill="none"
+                      stroke="#E2E8F0"
+                      strokeWidth="6"
+                    />
+                    <circle
+                      cx="44"
+                      cy="44"
+                      r={radius}
+                      fill="none"
+                      stroke={
+                        isTimedOut ? '#DC2626' : isWarning ? '#D97706' : '#0284C7'
+                      }
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      className="transition-[stroke-dashoffset] duration-100 linear"
+                    />
+                  </svg>
+                  <span
+                    className={`absolute font-mono tabular-nums text-lg font-bold ${
+                      isTimedOut
+                        ? 'text-rose-600'
+                        : isWarning
+                        ? 'text-amber-600'
+                        : 'text-slate-900'
+                    }`}
+                  >
+                    {remainingSec.toFixed(1)}
+                  </span>
+                </div>
+
+                {/* Explicit Dual-Coded Status */}
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
+                    {isTimedOut ? (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-rose-600" />
+                        <span className="text-rose-700">หมดเวลา {config.secondsPerQuestion} วินาที</span>
+                      </>
+                    ) : isWarning ? (
+                      <>
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span className="text-amber-700">ใกล้หมดเวลา (เหลือ &le; 10 วิ)</span>
+                      </>
+                    ) : isRunning ? (
+                      <>
+                        <Clock className="w-4 h-4 text-sky-700" />
+                        <span className="text-sky-800">กำลังจับเวลาตอบปากเปล่า</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-4 h-4 text-slate-500" />
+                        <span className="text-slate-600">หยุดจับเวลาชั่วคราว</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    กำหนดตอบคำละไม่เกิน {config.secondsPerQuestion} วินาที
+                  </p>
+                </div>
+              </div>
+
+              {/* Timer Controls */}
+              <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-end gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={isTimedOut}
+                  onClick={() => setIsRunning((r) => !r)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isRunning
+                      ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                      : 'bg-sky-700 text-white hover:bg-sky-800'
+                  }`}
+                >
+                  {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  <span>{isRunning ? 'หยุด' : 'จับเวลาต่อ'}</span>
+                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleAddFiveSeconds}
+                    className="inline-flex items-center gap-0.5 px-2.5 py-1.5 text-xs font-mono font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    title="เพิ่มเวลา 5 วินาที"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>5s</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetTimer}
+                    className="p-1.5 text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer"
+                    title="รีเซ็ตเวลาเป็น 30 วินาที"
+                    aria-label="รีเซ็ตเวลา"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Linear Progress Bar */}
+            <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-[width] duration-100 linear ${
+                  isTimedOut ? 'bg-rose-600' : isWarning ? 'bg-amber-500' : 'bg-sky-600'
+                }`}
+                style={{ width: `${progressFraction * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* 2. Instructor Answer Key & Grading Criteria */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowAnswerKey((s) => !s)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-50/70 hover:bg-slate-100/80 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                {showAnswerKey ? (
+                  <EyeOff className="w-4 h-4 text-sky-700" />
+                ) : (
+                  <Eye className="w-4 h-4 text-slate-500" />
+                )}
+                <span>เฉลยและเกณฑ์ตรวจสำหรับอาจารย์ (ปุ่ม R)</span>
+              </span>
+              <span className="text-xs text-sky-700 font-medium">
+                {showAnswerKey ? 'ซ่อนเฉลย' : 'เปิดดูเฉลย'}
+              </span>
+            </button>
+
+            {showAnswerKey ? (
+              <div className="p-4 border-t border-slate-200 space-y-3">
+                <div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="text-lg font-bold text-slate-900">{currentTerm.termEn}</h3>
+                    {currentTerm.termLatin && (
+                      <span className="text-xs italic text-slate-500">{currentTerm.termLatin}</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-sky-800 mt-0.5">{currentTerm.termTh}</p>
+                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                    {currentTerm.clinicalHintTh}
+                  </p>
+                </div>
+
+                <div className="pt-2.5 border-t border-slate-100 space-y-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono font-bold text-emerald-700 shrink-0 mt-0.5">2 คะแนน:</span>
+                    <span className="text-slate-700 leading-relaxed">{currentTerm.rubric2Pt}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono font-bold text-amber-700 shrink-0 mt-0.5">1 คะแนน:</span>
+                    <span className="text-slate-700 leading-relaxed">{currentTerm.rubric1Pt}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+                ซ่อนเฉลยไว้เพื่อป้องกันนักศึกษาเห็นคำตอบบนหน้าจอ กดปุ่มเปิดดูเฉลยหรือกด R เมื่อตรวจคำตอบ
+              </div>
+            )}
+          </div>
+
+          {/* 3. Instructor 0-2 Rubric Scoring Pad */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">
+                ให้คะแนนภาพนี้ (0–2 คะแนน)
+              </h3>
+              {currentAnswer && (
+                <span className="text-xs font-mono tabular-nums font-semibold text-sky-700">
+                  บันทึกแล้ว: {currentAnswer.score} คะแนน ({currentAnswer.timeSpentSec}s)
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {/* 0 Points */}
+              <button
+                type="button"
+                onClick={() => handleGrade(0)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  currentAnswer?.score === 0
+                    ? 'bg-rose-50 border-rose-600 ring-1 ring-rose-600 text-rose-900'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <XCircle
+                    className={`w-4 h-4 ${
+                      currentAnswer?.score === 0 ? 'text-rose-600' : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="font-mono tabular-nums text-xl font-bold">0</span>
+                </div>
+                <span className="text-xs font-medium mt-1">ไม่ถูก / ไม่ตอบ</span>
+              </button>
+
+              {/* 1 Point */}
+              <button
+                type="button"
+                onClick={() => handleGrade(1)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  currentAnswer?.score === 1
+                    ? 'bg-amber-50 border-amber-600 ring-1 ring-amber-600 text-amber-900'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle
+                    className={`w-4 h-4 ${
+                      currentAnswer?.score === 1 ? 'text-amber-600' : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="font-mono tabular-nums text-xl font-bold">1</span>
+                </div>
+                <span className="text-xs font-medium mt-1">ถูกบางส่วน</span>
+              </button>
+
+              {/* 2 Points */}
+              <button
+                type="button"
+                onClick={() => handleGrade(2)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                  currentAnswer?.score === 2
+                    ? 'bg-emerald-50 border-emerald-600 ring-1 ring-emerald-600 text-emerald-900'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2
+                    className={`w-4 h-4 ${
+                      currentAnswer?.score === 2 ? 'text-emerald-600' : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="font-mono tabular-nums text-xl font-bold">2</span>
+                </div>
+                <span className="text-xs font-medium mt-1">ถูกต้องครบถ้วน</span>
+              </button>
+            </div>
+
+            {/* Optional Note + Auto-advance toggle */}
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={draftNote}
+                onChange={(e) => handleNoteChange(e.target.value)}
+                placeholder="บันทึกข้อสังเกตของอาจารย์เพิ่มเติม (ถ้ามี)"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600 focus:border-transparent"
+              />
+              <label className="flex items-center gap-2 text-[11px] text-slate-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoAdvance}
+                  onChange={(e) => setAutoAdvance(e.target.checked)}
+                  className="rounded border-slate-300 text-sky-700 focus:ring-sky-600"
+                />
+                <span>ไปข้อถัดไปอัตโนมัติทันทีหลังกดให้คะแนน</span>
+              </label>
+            </div>
+
+            {/* Prev / Next Navigation */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                disabled={currentIndex === 0}
+                onClick={handlePrev}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>ข้อก่อนหน้า</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <span>
+                  {currentIndex < terms.length - 1 ? 'ไปข้อถัดไป' : 'สรุปผลคะแนนทั้งหมด'}
+                </span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* 4. Item Progress Navigator Strip */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5">
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+              <span>ความคืบหน้าข้อสอบ</span>
+              <span className="font-mono tabular-nums">
+                ตรวจแล้ว {gradedCount} / {terms.length} ภาพ
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {terms.map((t, idx) => {
+                const ans = answers[t.id];
+                const isCurrent = idx === currentIndex;
+                let styleClass = 'bg-slate-100 text-slate-600 border-slate-200';
+                if (ans) {
+                  if (ans.score === 2) styleClass = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+                  else if (ans.score === 1) styleClass = 'bg-amber-50 text-amber-800 border-amber-300';
+                  else styleClass = 'bg-rose-50 text-rose-800 border-rose-300';
+                }
+
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => loadQuestion(idx)}
+                    className={`w-8 h-8 rounded-md text-xs font-mono tabular-nums font-semibold border transition-all cursor-pointer ${styleClass} ${
+                      isCurrent ? 'ring-2 ring-sky-600 ring-offset-1' : 'hover:opacity-80'
+                    }`}
+                    title={`ข้อที่ ${idx + 1}: ${t.termEn}`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2.5">
+              คีย์ลัด: Space จับเวลา/หยุด · R เปิดเฉลย · กด 0, 1, 2 ให้คะแนน · Enter ข้อถัดไป
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
