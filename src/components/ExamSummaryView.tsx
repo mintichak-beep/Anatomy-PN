@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   CheckCircle2,
-  AlertCircle,
   XCircle,
   Download,
   RotateCcw,
@@ -99,20 +98,20 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
   const assessment =
     pct >= 80
       ? {
-          label: 'ผ่านเกณฑ์ดีเยี่ยม',
+          label: 'ผ่านเกณฑ์ดีเยี่ยม (Pass)',
           color: 'text-emerald-800 bg-emerald-50 border-emerald-200',
           icon: <Award className="w-5 h-5 text-emerald-600" />,
         }
       : pct >= 60
       ? {
-          label: 'ผ่านเกณฑ์มาตรฐาน',
-          color: 'text-teal-900 bg-teal-50 border-teal-200',
-          icon: <CheckCircle2 className="w-5 h-5 text-teal-700" />,
+          label: 'ผ่านเกณฑ์มาตรฐาน (Pass)',
+          color: 'text-sky-800 bg-sky-50 border-sky-200',
+          icon: <CheckCircle2 className="w-5 h-5 text-sky-600" />,
         }
       : {
-          label: 'ควรทบทวนเพิ่มเติม',
-          color: 'text-amber-800 bg-amber-50 border-amber-200',
-          icon: <AlertCircle className="w-5 h-5 text-amber-600" />,
+          label: 'ไม่ผ่านเกณฑ์ (Fail)',
+          color: 'text-rose-800 bg-rose-50 border-rose-200',
+          icon: <XCircle className="w-5 h-5 text-rose-600" />,
         };
 
   // System breakdown
