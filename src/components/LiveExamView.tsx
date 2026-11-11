@@ -140,6 +140,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         timedOut: timeLeftMs <= 0,
         note: draftNote.trim(),
         gradedAt: new Date().toISOString(),
+        targetX: currentTerm.targetX,
+        targetY: currentTerm.targetY,
       };
 
       setAnswers((prev) => ({ ...prev, [currentTerm.id]: record }));
@@ -179,6 +181,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         timedOut: false,
         note: 'ไม่ได้บันทึกคะแนน',
         gradedAt: new Date().toISOString(),
+        targetX: term.targetX,
+        targetY: term.targetY,
       };
     });
     onCompleteExam(orderedRecords, startedAt);
@@ -262,8 +266,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             </>
           )}
           <span aria-hidden="true" className="text-slate-300">·</span>
-          <span className="font-mono tabular-nums font-semibold text-teal-800">
-            ข้อที่ {currentIndex + 1} / {terms.length}
+          <span className="font-mono tabular-nums font-semibold text-sky-700">
+            ข้อที่ {currentIndex + 1} / {terms.length} ({currentSystem.nameTh})
           </span>
           <span aria-hidden="true" className="text-slate-300">·</span>
           <span className="font-mono tabular-nums">
@@ -278,7 +282,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             aria-label={isMuted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'}
           >
-            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-teal-700" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-sky-600" />}
             <span>{isMuted ? 'ปิดเสียง' : 'เปิดเสียง'}</span>
           </button>
 
@@ -287,7 +291,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               <button
                 type="button"
                 onClick={handleFinish}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 ยืนยันสรุปคะแนน ({gradedCount}/{terms.length})
               </button>
@@ -327,6 +331,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             key={currentTerm.id}
             system={currentSystem}
             term={currentTerm}
+            questionIndex={currentIndex + 1}
+            totalQuestions={terms.length}
           />
         </div>
 
@@ -372,7 +378,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                       r={radius}
                       fill="none"
                       stroke={
-                        isTimedOut ? '#DC2626' : isWarning ? '#D97706' : '#0F766E'
+                        isTimedOut ? '#E11D48' : isWarning ? '#F59E0B' : '#0284C7'
                       }
                       strokeWidth="5.5"
                       strokeLinecap="round"
@@ -387,7 +393,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                         ? 'text-rose-600'
                         : isWarning
                         ? 'text-amber-600'
-                        : 'text-slate-900'
+                        : 'text-sky-700'
                     }`}
                   >
                     {remainingSec.toFixed(1)}
@@ -408,8 +414,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                       </>
                     ) : isRunning ? (
                       <>
-                        <Clock className="w-4 h-4 text-teal-700 shrink-0" />
-                        <span className="text-teal-800">กำลังจับเวลาตอบปากเปล่า</span>
+                        <Clock className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span className="text-sky-700">กำลังจับเวลาตอบปากเปล่า</span>
                       </>
                     ) : (
                       <>
@@ -432,7 +438,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                     isRunning
                       ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                      : 'bg-teal-700 text-white hover:bg-teal-800'
+                      : 'bg-sky-600 text-white hover:bg-sky-700'
                   }`}
                 >
                   {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -461,10 +467,10 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
               </div>
             </div>
 
-            <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="mt-3 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-[width] duration-100 linear ${
-                  isTimedOut ? 'bg-rose-600' : isWarning ? 'bg-amber-500' : 'bg-teal-600'
+                  isTimedOut ? 'bg-rose-500' : isWarning ? 'bg-amber-500' : 'bg-sky-500'
                 }`}
                 style={{ width: `${progressFraction * 100}%` }}
               />
@@ -478,7 +484,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                 อาจารย์ให้คะแนนข้อนี้ (0–2 คะแนน)
               </h3>
               {currentAnswer && (
-                <span className="text-xs font-mono tabular-nums font-semibold text-teal-800">
+                <span className="text-xs font-mono tabular-nums font-semibold text-sky-700">
                   บันทึกแล้ว: {currentAnswer.score} คะแนน ({currentAnswer.timeSpentSec}s)
                 </span>
               )}
@@ -600,6 +606,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             <div className="flex flex-wrap gap-1.5">
               {terms.map((t, idx) => {
                 const ans = answers[t.id];
+                const itemSys = systems.find((s) => s.id === t.systemId);
                 const isCurrent = idx === currentIndex;
                 let styleClass = 'bg-slate-100 text-slate-600 border-slate-200';
                 if (ans) {
@@ -613,12 +620,15 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
                     key={t.id}
                     type="button"
                     onClick={() => loadQuestion(idx)}
-                    className={`w-8 h-8 rounded-lg text-xs font-mono tabular-nums font-semibold border transition-all cursor-pointer ${styleClass} ${
-                      isCurrent ? 'ring-2 ring-teal-600 ring-offset-1' : 'hover:opacity-80'
+                    className={`px-2.5 h-8 rounded-lg text-xs font-mono tabular-nums font-semibold border transition-all cursor-pointer inline-flex items-center gap-1 ${styleClass} ${
+                      isCurrent ? 'ring-2 ring-sky-600 ring-offset-1' : 'hover:opacity-80'
                     }`}
-                    title={`ข้อที่ ${idx + 1}`}
+                    title={`ข้อที่ ${idx + 1} (${itemSys?.nameTh || ''})`}
                   >
-                    {idx + 1}
+                    <span>{idx + 1}</span>
+                    {itemSys && (
+                      <span className="text-[10px] opacity-75">{itemSys.shortCode}</span>
+                    )}
                   </button>
                 );
               })}

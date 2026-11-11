@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Users, Download } from 'lucide-react';
 import { StudentRosterEntry } from '../types/anatomy';
 
 interface RosterModalProps {
@@ -11,6 +11,7 @@ interface RosterModalProps {
 
 function parseRosterText(raw: string): StudentRosterEntry[] {
   const lines = raw
+    .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
@@ -18,9 +19,9 @@ function parseRosterText(raw: string): StudentRosterEntry[] {
   const parsed: StudentRosterEntry[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Split by tab (Excel copy-paste), comma, or pipe
+    // Split by tab (Excel copy-paste), comma, semicolon, or pipe
     const parts = line
-      .split(/\t|,|\|/)
+      .split(/\t|,|;|\|/)
       .map((p) => p.replace(/^"|"$/g, '').trim());
 
     if (parts.length === 0) continue;
@@ -122,6 +123,36 @@ export const RosterModal: React.FC<RosterModalProps> = ({
     onSaveRoster(roster.filter((r) => r.id !== id));
   };
 
+  const handleGenerateSeats = (count: number) => {
+    const generated: StudentRosterEntry[] = Array.from({ length: count }, (_, idx) => ({
+      id: `stu-auto-${Date.now()}-${idx + 1}`,
+      seatNumber: String(idx + 1),
+      studentId: '',
+      studentName: `นักศึกษา เลขที่ ${idx + 1}`,
+    }));
+    onSaveRoster([...roster, ...generated]);
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const headers = ['เลขที่', 'รหัสประจำตัว', 'ชื่อ-นามสกุล'];
+    const rows = Array.from({ length: 30 }, (_, idx) => {
+      const num = idx + 1;
+      const padded = String(num).padStart(2, '0');
+      return [String(num), `67010${padded}`, `นศ. ตัวอย่างที่ ${num}`];
+    });
+    const escapeCsv = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+    const csv = '\uFEFF' + [headers, ...rows].map((r) => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anatomy-roster-template-30.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-6 my-6 shadow-xl">
@@ -206,7 +237,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
               <button
                 type="submit"
                 disabled={!studentName.trim() && !studentId.trim()}
-                className="sm:col-span-2 inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 rounded-lg cursor-pointer"
+                className="sm:col-span-2 inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 rounded-lg cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>เพิ่ม</span>
@@ -216,9 +247,20 @@ export const RosterModal: React.FC<RosterModalProps> = ({
             {/* Roster Table */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               {roster.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500">
-                  <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  ยังไม่มีรายชื่อนักศึกษา สามารถเพิ่มรายคนด้านบน หรือนำเข้าจาก Excel / CSV ได้เลย
+                <div className="p-8 text-center text-xs text-slate-500 space-y-3">
+                  <Users className="w-8 h-8 text-sky-300 mx-auto" />
+                  <p>
+                    ยังไม่มีรายชื่อนักศึกษา สามารถเพิ่มรายคนด้านบน นำเข้าจาก Excel / CSV
+                    หรือสร้างคิวสอบเลขที่ 1–30 อัตโนมัติได้ทันที
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateSeats(30)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>สร้างคิวเลขที่ 1–30 อัตโนมัติ</span>
+                  </button>
                 </div>
               ) : (
                 <div className="max-h-72 overflow-y-auto">
@@ -273,7 +315,22 @@ export const RosterModal: React.FC<RosterModalProps> = ({
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            <label className="flex items-center justify-center gap-2 w-full px-4 py-3 text-xs font-semibold text-sky-800 bg-sky-50 border border-dashed border-sky-300 rounded-xl hover:bg-sky-100 cursor-pointer">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs">
+              <div className="text-emerald-900">
+                <span className="font-semibold">รูปแบบไฟล์ที่รองรับ:</span>{' '}
+                <span>3 คอลัมน์ (เลขที่, รหัสประจำตัว, ชื่อ-นามสกุล) เปิดแก้ใน Excel แล้วนำเข้าได้ทันที</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadSampleCsv}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>ดาวน์โหลดไฟล์ตัวอย่าง 30 คน (.CSV)</span>
+              </button>
+            </div>
+
+            <label className="flex items-center justify-center gap-2 w-full px-4 py-3 text-xs font-semibold text-sky-700 bg-sky-50 border border-dashed border-sky-300 rounded-xl hover:bg-sky-100 cursor-pointer">
               <Upload className="w-4 h-4" />
               <span>อัปโหลดไฟล์ .CSV รายชื่อนักศึกษา (คอลัมน์: เลขที่, รหัสประจำตัว, ชื่อ-นามสกุล)</span>
               <input
@@ -293,7 +350,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 placeholder={'1\t6701001\tนศ.พ. กิตติพงศ์ ใจดี\n2\t6701002\tนศ.พ. ณัฐณิชา สุขสม\n3, 6701003, นศ.พ. ธนกร รักเรียน'}
-                className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
 
@@ -302,7 +359,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
                 type="button"
                 onClick={handleImportPaste}
                 disabled={!pasteText.trim()}
-                className="px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 disabled:bg-slate-300 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 rounded-lg cursor-pointer"
               >
                 นำเข้ารายชื่อที่วาง
               </button>

@@ -21,19 +21,22 @@
 }
 
 .bg-atlas-grid {
-  background-color: #f8fafc;
+  background-color: #f4faff;
   background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-  background-size: 28px 28px;
+    radial-gradient(circle at 12% 8%, rgba(14, 165, 233, 0.1), transparent 44%),
+    radial-gradient(circle at 88% 12%, rgba(16, 185, 129, 0.08), transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(244, 63, 94, 0.05), transparent 45%),
+    linear-gradient(to right, rgba(2, 132, 199, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(2, 132, 199, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px;
 }
 
 .bg-specimen-stage {
-  background-color: #0b1120;
+  background-color: #10243e;
   background-image:
-    radial-gradient(circle at 50% 45%, rgba(14, 116, 144, 0.14), transparent 70%),
-    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.2), transparent 72%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
   background-size: 100% 100%, 24px 24px, 24px 24px;
 }
 
@@ -43,11 +46,11 @@
     opacity: 0.9;
   }
   70% {
-    transform: translate(-50%, -50%) scale(1.65);
+    transform: translate(-50%, -50%) scale(1.75);
     opacity: 0;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.65);
+    transform: translate(-50%, -50%) scale(1.75);
     opacity: 0;
   }
 }

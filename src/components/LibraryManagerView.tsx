@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm, SystemId } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface LibraryManagerViewProps {
   systems: AnatomySystem[];
@@ -71,7 +72,7 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>เพิ่มคำศัพท์เข้าคลัง</span>
@@ -80,33 +81,37 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
 
       {/* Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg">
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl">
           <button
             type="button"
             onClick={() => setFilterSystem('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
               filterSystem === 'all'
-                ? 'bg-white text-slate-900 shadow-sm'
+                ? 'bg-white text-slate-900 shadow-xs font-semibold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             ทุกระบบ ({terms.length})
           </button>
-          {systems.map((sys) => (
-            <button
-              key={sys.id}
-              type="button"
-              onClick={() => setFilterSystem(sys.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                filterSystem === sys.id
-                  ? 'bg-white text-teal-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <AnatomicalSystemIcon systemId={sys.id} className="w-3.5 h-3.5" />
-              <span>{sys.nameTh}</span>
-            </button>
-          ))}
+          {systems.map((sys) => {
+            const theme = SYSTEM_THEMES[sys.id];
+            const isActive = filterSystem === sys.id;
+            return (
+              <button
+                key={sys.id}
+                type="button"
+                onClick={() => setFilterSystem(sys.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? `${theme.softBg} ${theme.accentText} ${theme.softBorder} shadow-xs font-semibold`
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                <AnatomicalSystemIcon systemId={sys.id} className={`w-3.5 h-3.5 ${theme.iconText}`} />
+                <span>{sys.nameTh}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -144,14 +149,15 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
               ) : (
                 filteredTerms.map((term, idx) => {
                   const sys = systems.find((s) => s.id === term.systemId);
+                  const theme = SYSTEM_THEMES[term.systemId];
                   return (
-                    <tr key={term.id} className="hover:bg-slate-50/70">
+                    <tr key={term.id} className="hover:bg-sky-50/40">
                       <td className="py-3 px-4 font-mono tabular-nums text-xs text-slate-400">
                         {idx + 1}
                       </td>
-                      <td className="py-3 px-4 text-xs text-slate-600">
-                        <span className="inline-flex items-center gap-1.5">
-                          <AnatomicalSystemIcon systemId={term.systemId} className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                      <td className="py-3 px-4 text-xs text-slate-700">
+                        <span className={`inline-flex items-center gap-1.5 font-medium ${theme.accentText}`}>
+                          <AnatomicalSystemIcon systemId={term.systemId} className={`w-3.5 h-3.5 ${theme.iconText} shrink-0`} />
                           <span>{sys?.nameTh || term.systemId}</span>
                         </span>
                       </td>
@@ -275,7 +281,7 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg cursor-pointer"
                 >
                   บันทึกคำศัพท์
                 </button>

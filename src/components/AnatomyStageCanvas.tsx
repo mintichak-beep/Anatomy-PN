@@ -2,22 +2,30 @@ import React, { useState, useRef } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Crosshair, ImageOff } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface AnatomyStageCanvasProps {
   system: AnatomySystem;
   term: AnatomyTerm;
+  questionIndex?: number;
+  totalQuestions?: number;
 }
 
 export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   system,
   term,
+  questionIndex,
+  totalQuestions,
 }) => {
+  const hasAutoTarget = term.targetX !== undefined && term.targetY !== undefined;
+  const theme = SYSTEM_THEMES[system.id];
+
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [laserMode, setLaserMode] = useState(false);
-  const [laserPos, setLaserPos] = useState<{ x: number; y: number } | null>(null);
+  const [laserMode, setLaserMode] = useState<boolean>(!hasAutoTarget);
+  const [manualLaserPos, setManualLaserPos] = useState<{ x: number; y: number } | null>(null);
   const [imgError, setImgError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +54,7 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
       if (x >= 0 && x <= 100 && y >= 0 && y <= 100) {
-        setLaserPos({ x, y });
+        setManualLaserPos({ x, y });
       }
       return;
     }
@@ -62,15 +70,15 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
 
   const handlePointerLeave = () => {
     setIsDragging(false);
-    if (laserMode) setLaserPos(null);
+    if (laserMode) setManualLaserPos(null);
   };
 
   return (
     <div className="flex flex-col bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       {/* Top Plate Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-200 bg-white">
         <div className="flex items-center gap-2 text-xs text-slate-600 min-w-0">
-          <AnatomicalSystemIcon systemId={system.id} className="w-4 h-4 text-teal-700 shrink-0" />
+          <AnatomicalSystemIcon systemId={system.id} className={`w-4 h-4 ${theme.iconText} shrink-0`} />
           <span className="font-semibold text-slate-900 truncate">
             {term.customPlateTitle || system.nameTh}
           </span>
@@ -83,17 +91,17 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
             type="button"
             onClick={() => {
               setLaserMode((prev) => !prev);
-              setLaserPos(null);
+              setManualLaserPos(null);
             }}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               laserMode
                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
             }`}
-            title="ใช้เลเซอร์ชี้จุดบนภาพเพื่อถามเพิ่มเติม"
+            title="ใช้เลเซอร์อาจารย์ชี้เพิ่มเติมบนภาพ"
           >
             <Crosshair className="w-3.5 h-3.5" />
-            <span>{laserMode ? 'เลเซอร์เปิดอยู่' : 'เลเซอร์อาจารย์'}</span>
+            <span>{laserMode ? 'เลเซอร์อาจารย์เปิดอยู่' : 'เลเซอร์อาจารย์'}</span>
           </button>
 
           <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -132,20 +140,31 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
         </div>
       </div>
 
-      {/* System Prompt Banner: Question Term Only (No Answer Key) */}
-      <div className="px-5 py-4 bg-teal-50/60 border-b border-teal-100 flex items-center justify-between gap-4">
+      {/* Test Stage Header: Zero Answer Keys Shown */}
+      <div className={`px-5 py-4 ${theme.softBg} border-b ${theme.softBorder} flex items-center justify-between gap-4`}>
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs font-medium text-teal-800">
-            <span>คำถามข้อนี้</span>
-            <span aria-hidden="true" className="text-teal-300">·</span>
-            <span>ให้นักศึกษาชี้ตำแหน่งและอธิบายโครงสร้างบนภาพ</span>
+          <div className={`flex items-center gap-2 text-xs font-semibold ${theme.accentText}`}>
+            {questionIndex && totalQuestions ? (
+              <>
+                <span className="font-mono tabular-nums">
+                  ระบบที่ {questionIndex} / {totalQuestions}
+                </span>
+                <span aria-hidden="true" className="opacity-40">·</span>
+              </>
+            ) : null}
+            <span>{system.nameEn}</span>
           </div>
-          <p className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-1">
-            {term.termEn}
+          <p className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
+            {system.nameTh}
+          </p>
+          <p className="text-xs md:text-sm text-slate-600 mt-0.5">
+            {hasAutoTarget
+              ? 'ให้นักศึกษาตอบชื่อโครงสร้าง ณ ตำแหน่งที่จุดเลเซอร์ชี้บนภาพ (ไม่แสดงคำเฉลย)'
+              : 'อาจารย์ชี้ตำแหน่งบนภาพด้วยเลเซอร์เพื่อให้นักศึกษาตอบ (ไม่แสดงคำเฉลย)'}
           </p>
         </div>
 
-        <div className="hidden sm:flex w-11 h-11 rounded-xl bg-white border border-teal-200/80 text-teal-700 items-center justify-center shrink-0">
+        <div className={`hidden sm:flex w-12 h-12 rounded-2xl ${theme.iconBgFilled} text-white shadow-xs items-center justify-center shrink-0`}>
           <AnatomicalSystemIcon systemId={system.id} className="w-6 h-6" />
         </div>
       </div>
@@ -184,15 +203,32 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
               <p className="text-xs text-slate-400 mt-1">ไม่พบรูปภาพสำหรับคำถามนี้</p>
             </div>
           )}
+
+          {/* System Auto-Pointed Laser Dot (Locked onto exact structure inside zoom/pan wrapper) */}
+          {hasAutoTarget && (
+            <div
+              className="absolute pointer-events-none z-20"
+              style={{
+                left: `${term.targetX}%`,
+                top: `${term.targetY}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div className="w-8 h-8 rounded-full border border-rose-400/80 bg-rose-500/20 animate-target-ripple absolute left-1/2 top-1/2" />
+              <div className="w-5 h-5 rounded-full bg-rose-500/35 flex items-center justify-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white shadow-[0_0_12px_rgba(244,63,94,0.9)]" />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Instructor Live Laser Dot */}
-        {laserMode && laserPos && (
+        {/* Instructor Live Cursor Laser Dot */}
+        {laserMode && manualLaserPos && (
           <div
-            className="absolute pointer-events-none z-20"
+            className="absolute pointer-events-none z-30"
             style={{
-              left: `${laserPos.x}%`,
-              top: `${laserPos.y}%`,
+              left: `${manualLaserPos.x}%`,
+              top: `${manualLaserPos.y}%`,
               transform: 'translate(-50%, -50%)',
             }}
           >

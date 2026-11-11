@@ -21,6 +21,7 @@ import {
   SystemId,
 } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface SetupLobbyProps {
   systems: AnatomySystem[];
@@ -29,6 +30,8 @@ interface SetupLobbyProps {
   roster: StudentRosterEntry[];
   history: ExamSessionRecord[];
   config: ExamConfig;
+  examDescription: string;
+  onChangeExamDescription: (next: string) => void;
   onChangeConfig: (next: ExamConfig) => void;
   onStartExam: () => void;
   onOpenLibrary: () => void;
@@ -45,6 +48,8 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
   roster,
   history,
   config,
+  examDescription,
+  onChangeExamDescription,
   onChangeConfig,
   onStartExam,
   onOpenLibrary,
@@ -53,6 +58,8 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
   onDeleteCustomPlate,
   onOpenRosterModal,
 }) => {
+  const [isEditingDesc, setIsEditingDesc] = React.useState(false);
+  const [draftDesc, setDraftDesc] = React.useState(examDescription);
   const toggleCustomPlate = (id: string) => {
     const exists = config.selectedCustomPlateIds.includes(id);
     const next = exists
@@ -126,31 +133,107 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
 
   return (
     <div className="max-w-[1260px] mx-auto px-4 md:px-6 py-8">
-      {/* Editorial Clinical Atlas Header */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      {/* Luminous Medical Atlas Header */}
+      <div className="bg-gradient-to-br from-sky-50/95 via-white to-emerald-50/75 border border-sky-200/80 rounded-2xl p-6 md:p-7 shadow-[0_2px_12px_rgba(2,132,199,0.06)]">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-teal-800 mb-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-sky-600 mb-2">
               <span>Anatomy Oral Examination Studio</span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span aria-hidden="true" className="text-sky-300">·</span>
               <span className="font-mono tabular-nums">8 Anatomical Systems</span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span aria-hidden="true" className="text-sky-300">·</span>
               <span>ระบบละ 1 คำ · 0–2 คะแนน</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-              จัดชุดสอบปากเปล่าวิชา กายวิภาคศาสตร์
+              การสอบปากเปล่าวิชา กายวิภาคศาสตร์
             </h1>
-            <p className="text-sm md:text-[15px] text-slate-600 mt-2 leading-relaxed">
-              อัปโหลดภาพสื่อการสอนของอาจารย์ในแต่ละระบบ ระบบจะสุ่มถามนักศึกษาคนละ 1 คำต่อระบบโดยไม่แสดงคำเฉลย
-              จับเวลาข้อละไม่เกิน {config.secondsPerQuestion} วินาที และอาจารย์ควบคุมการให้คะแนน 0–2 คะแนนได้ทันที
-            </p>
+
+            {isEditingDesc ? (
+              <div className="mt-3 space-y-2.5 max-w-2xl">
+                <textarea
+                  rows={3}
+                  value={draftDesc}
+                  onChange={(e) => setDraftDesc(e.target.value)}
+                  placeholder="พิมพ์รายละเอียดคำอธิบายการสอบด้วยตนเอง เช่น รหัสวิชา ชื่ออาจารย์ผู้สอน หรือคำชี้แจงสำหรับนักศึกษา..."
+                  autoFocus
+                  className="w-full px-3.5 py-2.5 text-sm bg-white border border-sky-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChangeExamDescription(draftDesc.trim());
+                      setIsEditingDesc(false);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>บันทึกคำอธิบาย</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftDesc(examDescription);
+                      setIsEditingDesc(false);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    ยกเลิก
+                  </button>
+                  {examDescription && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftDesc('');
+                        onChangeExamDescription('');
+                        setIsEditingDesc(false);
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      ลบข้อความ
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : examDescription.trim() ? (
+              <div className="mt-2 space-y-1.5">
+                <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed whitespace-pre-line">
+                  {examDescription}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftDesc(examDescription);
+                    setIsEditingDesc(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline cursor-pointer"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>แก้ไขคำอธิบาย</span>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftDesc('');
+                    setIsEditingDesc(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-sky-700 bg-white/90 hover:bg-sky-50 border border-sky-200 rounded-lg transition-colors shadow-xs cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>+ ใส่รายละเอียดคำอธิบายการสอบเอง</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={() => onOpenCustomPlateBuilder()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <ImagePlus className="w-4 h-4" />
               <span>เพิ่มชุดภาพเอง</span>
@@ -159,35 +242,35 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
             <button
               type="button"
               onClick={onOpenLibrary}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-sky-50/60 hover:border-sky-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-teal-700" />
+              <BookOpen className="w-4 h-4 text-indigo-600" />
               <span>คลังคำศัพท์ 8 ระบบ</span>
             </button>
           </div>
         </div>
 
         {/* Clean Unboxed Workflow Strip */}
-        <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div className="mt-6 pt-5 border-t border-sky-100/90 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-teal-700 mt-0.5">01.</span>
+            <span className="font-mono tabular-nums font-bold text-sky-600 mt-0.5">01.</span>
             <div>
               <p className="font-semibold text-slate-900">อัปโหลดภาพทั้ง 8 ระบบ</p>
-              <p className="text-slate-500 mt-0.5">ใช้ภาพหุ่นจำลองหรือภาพกายวิภาคของอาจารย์เอง ไม่มีคลังภาพมาตรฐาน</p>
+              <p className="text-slate-600 mt-0.5">ใช้ภาพหุ่นจำลองหรือภาพกายวิภาคของอาจารย์เอง ไม่มีคลังภาพมาตรฐาน</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-teal-700 mt-0.5">02.</span>
+            <span className="font-mono tabular-nums font-bold text-emerald-600 mt-0.5">02.</span>
             <div>
               <p className="font-semibold text-slate-900">เลือกเลขที่ · รหัส · ชื่อผู้เข้าสอบ</p>
-              <p className="text-slate-500 mt-0.5">นำเข้ารายชื่อจาก Excel หรือเลือกจากบัญชีรายชื่อได้ทันที</p>
+              <p className="text-slate-600 mt-0.5">นำเข้ารายชื่อจาก Excel หรือเลือกจากบัญชีรายชื่อได้ทันที</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-teal-700 mt-0.5">03.</span>
+            <span className="font-mono tabular-nums font-bold text-indigo-600 mt-0.5">03.</span>
             <div>
               <p className="font-semibold text-slate-900">สุ่มถามและประเมิน 0–2 คะแนน</p>
-              <p className="text-slate-500 mt-0.5">จับเวลา {config.secondsPerQuestion} วินาทีต่อคำ ไม่มีคำเฉลยขึ้นหน้าจอ</p>
+              <p className="text-slate-600 mt-0.5">จับเวลา {config.secondsPerQuestion} วินาทีต่อคำ ไม่มีคำเฉลยขึ้นหน้าจอ</p>
             </div>
           </div>
         </div>
@@ -207,7 +290,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
                     เลือกใช้สอบ {config.selectedCustomPlateIds.length} ภาพ · คำศัพท์พร้อมสุ่มถาม{' '}
-                    <span className="font-mono tabular-nums font-semibold text-teal-800">
+                    <span className="font-mono tabular-nums font-semibold text-sky-700">
                       {matchingTermsCount}
                     </span>{' '}
                     คำ
@@ -218,7 +301,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                   <button
                     type="button"
                     onClick={selectAllCustomPlates}
-                    className="px-3 py-1.5 text-xs font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    className="px-3 py-1.5 text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     เลือกทุกภาพ
                   </button>
@@ -236,14 +319,15 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 {customPlates.map((plate) => {
                   const isSelected = config.selectedCustomPlateIds.includes(plate.id);
                   const sys = systems.find((s) => s.id === plate.systemId);
+                  const theme = SYSTEM_THEMES[plate.systemId];
                   return (
                     <div
                       key={plate.id}
                       onClick={() => toggleCustomPlate(plate.id)}
                       className={`bg-white rounded-2xl border transition-all overflow-hidden flex flex-col cursor-pointer ${
                         isSelected
-                          ? 'border-teal-600 ring-1 ring-teal-600 shadow-[0_2px_10px_rgba(15,118,110,0.08)]'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? 'border-sky-500 ring-1 ring-sky-500 shadow-[0_2px_12px_rgba(2,132,199,0.12)]'
+                          : 'border-slate-200 hover:border-sky-300'
                       }`}
                     >
                       <div className="relative w-full aspect-[4/3] bg-specimen-stage border-b border-slate-200 overflow-hidden">
@@ -253,10 +337,23 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                           referrerPolicy="no-referrer"
                           className="w-full h-full object-contain"
                         />
+                        {plate.terms.map((t) =>
+                          t.targetX !== undefined && t.targetY !== undefined ? (
+                            <div
+                              key={t.id}
+                              style={{
+                                left: `${t.targetX}%`,
+                                top: `${t.targetY}%`,
+                                transform: 'translate(-50%, -50%)',
+                              }}
+                              className="absolute w-2.5 h-2.5 rounded-full bg-rose-500 ring-1 ring-white shadow-xs pointer-events-none"
+                            />
+                          ) : null
+                        )}
                         <div
                           className={`absolute top-3 right-3 w-6 h-6 rounded-lg flex items-center justify-center border transition-colors ${
                             isSelected
-                              ? 'bg-teal-600 border-teal-500 text-white'
+                              ? 'bg-sky-600 border-sky-500 text-white'
                               : 'bg-slate-900/70 border-white/30 text-transparent'
                           }`}
                         >
@@ -267,15 +364,22 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                         <div>
                           <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                            <span className="inline-flex items-center gap-1.5 font-medium text-teal-800">
+                            <span className={`inline-flex items-center gap-1.5 font-semibold ${theme.accentText}`}>
                               <AnatomicalSystemIcon
                                 systemId={plate.systemId}
-                                className="w-3.5 h-3.5"
+                                className={`w-3.5 h-3.5 ${theme.iconText}`}
                               />
                               <span>{sys?.nameTh || plate.systemId}</span>
                             </span>
                             <span className="font-mono tabular-nums font-medium text-slate-600">
-                              {plate.terms.length} คำศัพท์
+                              {(() => {
+                                const pinned = plate.terms.filter(
+                                  (t) => t.targetX !== undefined && t.targetY !== undefined
+                                ).length;
+                                return pinned > 0
+                                  ? `จุดเลเซอร์ ${pinned} จุด`
+                                  : `${plate.terms.length} คำศัพท์`;
+                              })()}
                             </span>
                           </div>
                           <h3 className="text-sm font-bold text-slate-900 mt-1 truncate">
@@ -296,7 +400,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                           >
                             <Pencil className="w-3 h-3" />
-                            <span>แก้ไขคำศัพท์</span>
+                            <span>ชี้จุดเลเซอร์ / แก้ไข</span>
                           </button>
                           <button
                             type="button"
@@ -331,7 +435,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                   อัปโหลดภาพเข้าระบบที่ต้องการสอบ ระบบจะสุ่มคำศัพท์ของระบบนั้นคนละ 1 คำเมื่อเริ่มสอบจริง
                 </p>
               </div>
-              <span className="font-mono tabular-nums text-xs font-semibold text-teal-800">
+              <span className="font-mono tabular-nums text-xs font-semibold text-sky-700">
                 พร้อมใช้งาน {uploadedSystemsCount} / {systems.length} ระบบ
               </span>
             </div>
@@ -341,28 +445,29 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 const sysTermCount = allTerms.filter((t) => t.systemId === sys.id).length;
                 const sysPlatesCount = customPlates.filter((p) => p.systemId === sys.id).length;
                 const hasPlate = sysPlatesCount > 0;
+                const theme = SYSTEM_THEMES[sys.id];
 
                 return (
                   <div
                     key={sys.id}
-                    className={`bg-white border rounded-2xl p-4 flex flex-col justify-between gap-3.5 transition-colors ${
-                      hasPlate ? 'border-teal-200' : 'border-slate-200 hover:border-slate-300'
+                    className={`bg-white border rounded-2xl p-4 flex flex-col justify-between gap-3.5 transition-all hover:shadow-[0_4px_16px_rgba(15,23,42,0.05)] ${
+                      hasPlate ? `${theme.softBorder} shadow-xs` : 'border-slate-200 hover:border-sky-300'
                     }`}
                   >
                     <div className="flex items-start gap-3.5">
                       <div
-                        className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
+                        className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 transition-colors ${
                           hasPlate
-                            ? 'bg-teal-700 border-teal-700 text-white'
-                            : 'bg-teal-50/70 border-teal-100 text-teal-800'
+                            ? `${theme.iconBgFilled} border-transparent text-white shadow-xs`
+                            : `${theme.iconBg} ${theme.iconBorder} ${theme.iconText}`
                         }`}
                       >
                         <AnatomicalSystemIcon systemId={sys.id} className="w-5 h-5" />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                          <span className="truncate font-mono">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className={`truncate font-mono font-semibold ${theme.iconText}`}>
                             0{idx + 1} · {sys.nameEn}
                           </span>
                           <span className="font-mono tabular-nums shrink-0 text-slate-500">
@@ -376,7 +481,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                           {sys.descriptionTh}
                         </p>
                         {hasPlate && (
-                          <p className="text-xs font-medium text-teal-700 mt-1.5 flex items-center gap-1">
+                          <p className={`text-xs font-semibold ${theme.accentText} mt-1.5 flex items-center gap-1`}>
                             <Check className="w-3.5 h-3.5" />
                             <span>อัปโหลดแล้ว {sysPlatesCount} ภาพ</span>
                           </p>
@@ -385,7 +490,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-                      <label className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-teal-800 bg-teal-50/90 hover:bg-teal-100 border border-teal-200 rounded-xl transition-colors cursor-pointer whitespace-nowrap">
+                      <label className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold border rounded-xl transition-colors cursor-pointer whitespace-nowrap ${theme.buttonBg}`}>
                         <Upload className="w-3.5 h-3.5 shrink-0" />
                         <span>อัปโหลดภาพระบบนี้</span>
                         <input
@@ -412,12 +517,12 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
         </div>
 
         {/* Right Column: Student & Exam Configuration */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 sticky top-20 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+        <div className="lg:col-span-4 bg-white border border-sky-200/80 rounded-2xl p-5 sticky top-20 shadow-[0_2px_12px_rgba(2,132,199,0.06)]">
           <div className="pb-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <h2 className="text-base font-bold text-slate-900">
               2. ข้อมูลผู้เข้าสอบและตั้งค่าเวลา
             </h2>
-            <span className="font-mono tabular-nums text-xs text-teal-700 font-semibold">
+            <span className="font-mono tabular-nums text-xs text-sky-700 font-semibold">
               {effectiveQuestionCount} ข้อ
             </span>
           </div>
@@ -432,7 +537,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 <button
                   type="button"
                   onClick={onOpenRosterModal}
-                  className="text-xs font-semibold text-teal-700 hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-xs font-semibold text-sky-600 hover:underline cursor-pointer whitespace-nowrap shrink-0"
                 >
                   {roster.length > 0
                     ? `จัดการรายชื่อ (${roster.length} คน)`
@@ -440,42 +545,71 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 </button>
               </div>
 
-              {roster.length > 0 && (
-                <div>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const picked = roster.find((r) => r.id === e.target.value);
-                      if (picked) {
-                        onChangeConfig({
-                          ...config,
-                          seatNumber: picked.seatNumber,
-                          studentId: picked.studentId,
-                          studentName: picked.studentName,
-                        });
-                      }
-                    }}
-                    className="w-full px-3 py-2.5 text-xs bg-teal-50/70 border border-teal-200 rounded-xl text-teal-950 font-medium focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer"
-                  >
-                    <option value="">
-                      — เลือกนักศึกษาจากบัญชีรายชื่อ ({roster.length} คน) —
-                    </option>
-                    {roster.map((stu) => {
-                      const tested = history.some(
-                        (h) =>
-                          (stu.studentId && h.studentId === stu.studentId) ||
-                          (stu.studentName && h.studentName === stu.studentName)
-                      );
-                      return (
-                        <option key={stu.id} value={stu.id}>
-                          เลขที่ {stu.seatNumber || '-'} · {stu.studentId || 'ไม่มีรหัส'} ·{' '}
-                          {stu.studentName} {tested ? '(สอบแล้ว)' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              )}
+              {roster.length > 0 && (() => {
+                const isStuTested = (stu: StudentRosterEntry) =>
+                  history.some(
+                    (h) =>
+                      (stu.studentId && h.studentId === stu.studentId) ||
+                      (stu.studentName && h.studentName === stu.studentName) ||
+                      (stu.seatNumber && h.seatNumber === stu.seatNumber)
+                  );
+                const testedInRoster = roster.filter(isStuTested).length;
+                const nextUntested = roster.find((stu) => !isStuTested(stu));
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-mono tabular-nums">
+                        สอบแล้ว {testedInRoster} / {roster.length} คน
+                      </span>
+                      {nextUntested && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onChangeConfig({
+                              ...config,
+                              seatNumber: nextUntested.seatNumber,
+                              studentId: nextUntested.studentId,
+                              studentName: nextUntested.studentName,
+                            })
+                          }
+                          className="font-semibold text-sky-600 hover:underline cursor-pointer"
+                        >
+                          เลือกคนถัดไป (เลขที่ {nextUntested.seatNumber || '-'})
+                        </button>
+                      )}
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const picked = roster.find((r) => r.id === e.target.value);
+                        if (picked) {
+                          onChangeConfig({
+                            ...config,
+                            seatNumber: picked.seatNumber,
+                            studentId: picked.studentId,
+                            studentName: picked.studentName,
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 text-xs bg-sky-50/70 border border-sky-200 rounded-xl text-sky-950 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+                    >
+                      <option value="">
+                        — เลือกนักศึกษาจากบัญชีรายชื่อ ({roster.length} คน) —
+                      </option>
+                      {roster.map((stu) => {
+                        const tested = isStuTested(stu);
+                        return (
+                          <option key={stu.id} value={stu.id}>
+                            เลขที่ {stu.seatNumber || '-'} · {stu.studentId || 'ไม่มีรหัส'} ·{' '}
+                            {stu.studentName} {tested ? '(สอบแล้ว)' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-12 gap-2.5">
                 <div className="col-span-4">
@@ -491,7 +625,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     value={config.seatNumber}
                     onChange={(e) => onChangeConfig({ ...config, seatNumber: e.target.value })}
                     placeholder="เช่น 12"
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                   />
                 </div>
 
@@ -508,7 +642,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     value={config.studentId}
                     onChange={(e) => onChangeConfig({ ...config, studentId: e.target.value })}
                     placeholder="เช่น 6701042"
-                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -528,7 +662,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     value={config.studentName}
                     onChange={(e) => onChangeConfig({ ...config, studentName: e.target.value })}
                     placeholder="เช่น นศ.พ. กิตติพงศ์ ใจดี"
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -540,7 +674,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 <span className="text-xs font-medium text-slate-700">
                   จำนวนคำศัพท์ที่ถามต่อระบบ
                 </span>
-                <span className="text-xs text-teal-700 font-medium">สอบจริง: ระบบละ 1 คำ</span>
+                <span className="text-xs text-sky-700 font-medium">สอบจริง: ระบบละ 1 คำ</span>
               </div>
               <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl">
                 {[
@@ -554,7 +688,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     onClick={() => onChangeConfig({ ...config, termsPerSystem: opt.val })}
                     className={`py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                       config.termsPerSystem === opt.val
-                        ? 'bg-white text-slate-900 shadow-xs'
+                        ? 'bg-white text-sky-700 font-semibold shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -568,10 +702,10 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <Clock className="w-3.5 h-3.5 text-sky-600" />
                   เวลาจำกัดต่อคำศัพท์
                 </span>
-                <span className="text-xs text-teal-700 font-medium">มาตรฐาน 30 วินาที</span>
+                <span className="text-xs text-sky-700 font-medium">มาตรฐาน 30 วินาที</span>
               </div>
               <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl">
                 {[20, 30, 45].map((sec) => (
@@ -581,7 +715,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     onClick={() => onChangeConfig({ ...config, secondsPerQuestion: sec })}
                     className={`py-1.5 text-xs font-medium font-mono tabular-nums rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                       config.secondsPerQuestion === sec
-                        ? 'bg-white text-slate-900 shadow-xs'
+                        ? 'bg-white text-sky-700 font-semibold shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -598,13 +732,17 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 onClick={() => onChangeConfig({ ...config, shuffle: !config.shuffle })}
                 className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                <span className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                  <Shuffle className="w-4 h-4 text-slate-500" />
-                  สุ่มลำดับระบบที่ถาม
+                <span className="flex items-center gap-2 text-xs font-medium text-slate-700 text-left">
+                  <Shuffle className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>
+                    {config.shuffle
+                      ? 'สุ่มสลับลำดับระบบ (เปิด)'
+                      : 'รันทีละระบบตามลำดับ 1–8'}
+                  </span>
                 </span>
                 <span
-                  className={`w-9 h-5 rounded-full transition-colors p-0.5 flex items-center ${
-                    config.shuffle ? 'bg-teal-600 justify-end' : 'bg-slate-300 justify-start'
+                  className={`w-9 h-5 rounded-full transition-colors p-0.5 flex items-center shrink-0 ${
+                    config.shuffle ? 'bg-sky-600 justify-end' : 'bg-slate-300 justify-start'
                   }`}
                 >
                   <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
@@ -622,7 +760,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 </span>
                 <span
                   className={`w-9 h-5 rounded-full transition-colors p-0.5 flex items-center ${
-                    config.autoStartTimer ? 'bg-teal-600 justify-end' : 'bg-slate-300 justify-start'
+                    config.autoStartTimer ? 'bg-sky-600 justify-end' : 'bg-slate-300 justify-start'
                   }`}
                 >
                   <span className="w-4 h-4 rounded-full bg-white shadow-xs" />
@@ -642,7 +780,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
               type="button"
               disabled={!canStart}
               onClick={onStartExam}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-teal-700 hover:bg-teal-800 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl transition-colors cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>เริ่มการสอบ Oral Test</span>

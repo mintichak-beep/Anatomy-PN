@@ -23,6 +23,7 @@ const STORAGE_HISTORY_KEY = 'anatomia_oral_history_v1';
 const STORAGE_CUSTOM_TERMS_KEY = 'anatomia_oral_custom_terms_v1';
 const STORAGE_CUSTOM_PLATES_KEY = 'anatomia_oral_custom_plates_v1';
 const STORAGE_ROSTER_KEY = 'anatomia_oral_roster_v1';
+const STORAGE_EXAM_DESCRIPTION_KEY = 'anatomia_oral_description_v1';
 
 function shuffleArray<T>(items: T[]): T[] {
   const arr = [...items];
@@ -72,6 +73,14 @@ export default function App() {
     }
   });
 
+  const [examDescription, setExamDescription] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_EXAM_DESCRIPTION_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+
   const [config, setConfig] = useState<ExamConfig>({
     studentName: '',
     studentId: '',
@@ -79,7 +88,7 @@ export default function App() {
     selectedCustomPlateIds: customPlates.map((p) => p.id),
     termsPerSystem: 1,
     secondsPerQuestion: 30,
-    shuffle: true,
+    shuffle: false,
     autoStartTimer: true,
   });
 
@@ -88,6 +97,7 @@ export default function App() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingPlate, setEditingPlate] = useState<CustomPlate | null>(null);
   const [builderDefaultSystemId, setBuilderDefaultSystemId] = useState<SystemId>('respiratory');
+  const [builderQuickImageUrl, setBuilderQuickImageUrl] = useState<string>('');
   const [rosterOpen, setRosterOpen] = useState(false);
 
   useEffect(() => {
@@ -122,6 +132,14 @@ export default function App() {
     }
   }, [roster]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_EXAM_DESCRIPTION_KEY, examDescription);
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [examDescription]);
+
   const allTerms = useMemo(
     () => [...customTerms, ...BUILT_IN_TERMS],
     [customTerms]
@@ -131,6 +149,21 @@ export default function App() {
     const selectedPlates = customPlates.filter((p) =>
       cfg.selectedCustomPlateIds.includes(p.id)
     );
+
+    // Track how many times each term has already been asked across the ~30 students
+    const usageCount = new Map<string, number>();
+    const lastUsedTermBySys = new Map<SystemId, string>();
+    for (let i = history.length - 1; i >= 0; i--) {
+      for (const ans of history[i].answers) {
+        const key = `${ans.systemId}::${ans.termEn.toLowerCase()}`;
+        usageCount.set(key, (usageCount.get(key) || 0) + 1);
+      }
+    }
+    if (history.length > 0) {
+      for (const ans of history[0].answers) {
+        lastUsedTermBySys.set(ans.systemId, ans.termEn.toLowerCase());
+      }
+    }
 
     const perSystemResult: AnatomyTerm[] = [];
 
@@ -147,6 +180,8 @@ export default function App() {
             termTh: pt.termTh,
             customImageUrl: plate.imageUrl,
             customPlateTitle: plate.title,
+            targetX: pt.targetX,
+            targetY: pt.targetY,
             isCustom: true,
           });
         }
@@ -154,8 +189,24 @@ export default function App() {
 
       if (sysPool.length === 0) continue;
 
-      // Always randomize within the system so each student gets a random term for that system
-      const randomizedSysPool = shuffleArray(sysPool);
+      // If instructor pinned laser spots for this system, randomly draw from the pinned spots
+      const pinnedPool = sysPool.filter(
+        (t) => t.targetX !== undefined && t.targetY !== undefined
+      );
+      const effectiveSysPool = pinnedPool.length > 0 ? pinnedPool : sysPool;
+
+      // Shuffle first, then sort by least-asked count (and avoid repeating the immediately prior student's term)
+      const prevTerm = lastUsedTermBySys.get(sys.id);
+      const randomizedSysPool = shuffleArray(effectiveSysPool).sort((a, b) => {
+        const keyA = `${a.systemId}::${a.termEn.toLowerCase()}`;
+        const keyB = `${b.systemId}::${b.termEn.toLowerCase()}`;
+        const countDiff = (usageCount.get(keyA) || 0) - (usageCount.get(keyB) || 0);
+        if (countDiff !== 0) return countDiff;
+        const aWasLast = prevTerm && a.termEn.toLowerCase() === prevTerm ? 1 : 0;
+        const bWasLast = prevTerm && b.termEn.toLowerCase() === prevTerm ? 1 : 0;
+        return aWasLast - bWasLast;
+      });
+
       const chosen =
         cfg.termsPerSystem === 0
           ? randomizedSysPool
@@ -199,9 +250,55 @@ export default function App() {
     setView('summary');
   };
 
+  const nextUntestedStudent = useMemo(() => {
+    if (roster.length === 0) return null;
+    return (
+      roster.find(
+        (stu) =>
+          !history.some(
+            (h) =>
+              (stu.studentId && h.studentId === stu.studentId) ||
+              (stu.studentName && h.studentName === stu.studentName) ||
+              (stu.seatNumber && h.seatNumber === stu.seatNumber)
+          )
+      ) || null
+    );
+  }, [history, roster]);
+
   const handleStartNextStudent = () => {
-    setConfig((prev) => ({ ...prev, studentName: '', studentId: '', seatNumber: '' }));
+    if (nextUntestedStudent) {
+      setConfig((prev) => ({
+        ...prev,
+        seatNumber: nextUntestedStudent.seatNumber,
+        studentId: nextUntestedStudent.studentId,
+        studentName: nextUntestedStudent.studentName,
+      }));
+    } else {
+      const prevSeatNum = parseInt(config.seatNumber.trim(), 10);
+      const nextSeat = Number.isFinite(prevSeatNum) ? String(prevSeatNum + 1) : '';
+      setConfig((prev) => ({
+        ...prev,
+        studentName: '',
+        studentId: '',
+        seatNumber: nextSeat,
+      }));
+    }
     setView('setup');
+  };
+
+  const handleImmediateNextExam = () => {
+    if (!nextUntestedStudent) {
+      handleStartNextStudent();
+      return;
+    }
+    const nextCfg: ExamConfig = {
+      ...config,
+      seatNumber: nextUntestedStudent.seatNumber,
+      studentId: nextUntestedStudent.studentId,
+      studentName: nextUntestedStudent.studentName,
+    };
+    setConfig(nextCfg);
+    startExamWithConfig(nextCfg);
   };
 
   const handleAddCustomTerm = (term: AnatomyTerm) => {
@@ -213,31 +310,10 @@ export default function App() {
   };
 
   const handleQuickUploadForSystem = (systemId: SystemId, imageUrl: string) => {
-    const sys = ANATOMY_SYSTEMS.find((s) => s.id === systemId);
-    const sysTerms = allTerms
-      .filter((t) => t.systemId === systemId)
-      .map((t) => ({
-        id: `cpt-${t.id}`,
-        systemId: t.systemId,
-        termEn: t.termEn,
-        termTh: t.termTh,
-      }));
-
-    const existingCount = customPlates.filter((p) => p.systemId === systemId).length;
-    const newPlate: CustomPlate = {
-      id: `plate-${Date.now()}`,
-      title: existingCount > 0 ? `${sys?.nameTh || systemId} (ชุดที่ ${existingCount + 1})` : sys?.nameTh || systemId,
-      systemId,
-      imageUrl,
-      terms: sysTerms,
-      createdAt: new Date().toISOString(),
-    };
-
-    setCustomPlates((prev) => [newPlate, ...prev]);
-    setConfig((prev) => ({
-      ...prev,
-      selectedCustomPlateIds: [...prev.selectedCustomPlateIds, newPlate.id],
-    }));
+    setEditingPlate(null);
+    setBuilderDefaultSystemId(systemId);
+    setBuilderQuickImageUrl(imageUrl);
+    setBuilderOpen(true);
   };
 
   const handleSaveCustomPlate = (plate: CustomPlate) => {
@@ -256,6 +332,7 @@ export default function App() {
     }));
     setBuilderOpen(false);
     setEditingPlate(null);
+    setBuilderQuickImageUrl('');
   };
 
   const handleDeleteCustomPlate = (id: string) => {
@@ -291,8 +368,8 @@ export default function App() {
   const navLinkClass = (active: boolean) =>
     `text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-0.5 border-b-2 ${
       active
-        ? 'text-slate-900 border-teal-700'
-        : 'text-slate-600 border-transparent hover:text-slate-900'
+        ? 'text-sky-700 border-sky-600 font-semibold'
+        : 'text-slate-600 border-transparent hover:text-sky-700'
     }`;
 
   const canQuickStart = buildExamPool(config).length > 0;
@@ -305,9 +382,9 @@ export default function App() {
           <button
             type="button"
             onClick={() => setView('setup')}
-            className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer"
+            className="text-base md:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            Anatomia Oral
+            การสอบปากเปล่าวิชา กายวิภาคศาสตร์
           </button>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -357,7 +434,7 @@ export default function App() {
                 type="button"
                 disabled={!canQuickStart}
                 onClick={() => startExamWithConfig(config)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 disabled:bg-slate-300 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 เริ่มสอบทันที
               </button>
@@ -371,7 +448,7 @@ export default function App() {
             type="button"
             onClick={() => setView('setup')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'setup' ? 'text-teal-700 font-semibold' : 'text-slate-600'
+              view === 'setup' ? 'text-sky-600 font-semibold' : 'text-slate-600'
             }`}
           >
             จัดชุดสอบ
@@ -380,7 +457,7 @@ export default function App() {
             type="button"
             onClick={() => setView('library')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'library' ? 'text-teal-700 font-semibold' : 'text-slate-600'
+              view === 'library' ? 'text-sky-600 font-semibold' : 'text-slate-600'
             }`}
           >
             คลังคำศัพท์ 8 ระบบ
@@ -389,7 +466,7 @@ export default function App() {
             type="button"
             onClick={() => setView('history')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'history' ? 'text-teal-700 font-semibold' : 'text-slate-600'
+              view === 'history' ? 'text-sky-600 font-semibold' : 'text-slate-600'
             }`}
           >
             ประวัติ ({history.length})
@@ -407,12 +484,15 @@ export default function App() {
             roster={roster}
             history={history}
             config={config}
+            examDescription={examDescription}
+            onChangeExamDescription={setExamDescription}
             onChangeConfig={setConfig}
             onStartExam={() => startExamWithConfig(config)}
             onOpenLibrary={() => setView('library')}
             onQuickUploadForSystem={handleQuickUploadForSystem}
             onOpenCustomPlateBuilder={(plate, sysId) => {
               setEditingPlate(plate || null);
+              setBuilderQuickImageUrl('');
               setBuilderDefaultSystemId(sysId || plate?.systemId || 'respiratory');
               setBuilderOpen(true);
             }}
@@ -435,7 +515,11 @@ export default function App() {
           <ExamSummaryView
             session={activeSession}
             systems={ANATOMY_SYSTEMS}
+            nextUntestedStudent={nextUntestedStudent}
+            testedCount={history.length}
+            totalRosterCount={roster.length}
             onStartNextStudent={handleStartNextStudent}
+            onImmediateNextExam={handleImmediateNextExam}
             onRetakeSameConfig={() => startExamWithConfig(config)}
             onOpenHistory={() => setView('history')}
             onUpdateItemScore={handleUpdateItemScore}
@@ -473,10 +557,12 @@ export default function App() {
           allTerms={allTerms}
           initialPlate={editingPlate}
           initialSystemId={builderDefaultSystemId}
+          initialImageUrl={builderQuickImageUrl}
           onSave={handleSaveCustomPlate}
           onClose={() => {
             setBuilderOpen(false);
             setEditingPlate(null);
+            setBuilderQuickImageUrl('');
           }}
         />
       )}

@@ -28,6 +28,8 @@ export interface AnatomyTerm {
   termTh: string;
   customImageUrl?: string;
   customPlateTitle?: string;
+  targetX?: number; // 0-100% horizontal laser coordinate on plate
+  targetY?: number; // 0-100% vertical laser coordinate on plate
   isCustom?: boolean;
 }
 
@@ -36,6 +38,8 @@ export interface CustomPlateTerm {
   systemId: SystemId;
   termEn: string;
   termTh: string;
+  targetX?: number;
+  targetY?: number;
 }
 
 export interface CustomPlate {
@@ -75,6 +79,8 @@ export interface ExamAnswerRecord {
   timedOut: boolean;
   note: string;
   gradedAt: string;
+  targetX?: number;
+  targetY?: number;
 }
 
 export interface ExamSessionRecord {

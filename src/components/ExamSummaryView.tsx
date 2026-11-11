@@ -9,13 +9,18 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
-import { AnatomySystem, ExamGrade, ExamSessionRecord } from '../types/anatomy';
+import { AnatomySystem, ExamGrade, ExamSessionRecord, StudentRosterEntry } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface ExamSummaryViewProps {
   session: ExamSessionRecord;
   systems: AnatomySystem[];
+  nextUntestedStudent?: StudentRosterEntry | null;
+  testedCount?: number;
+  totalRosterCount?: number;
   onStartNextStudent: () => void;
+  onImmediateNextExam: () => void;
   onRetakeSameConfig: () => void;
   onOpenHistory: () => void;
   onUpdateItemScore: (sessionId: string, termId: string, newScore: ExamGrade) => void;
@@ -72,7 +77,11 @@ export function exportSessionCsv(session: ExamSessionRecord, systems: AnatomySys
 export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
   session,
   systems,
+  nextUntestedStudent,
+  testedCount = 0,
+  totalRosterCount = 0,
   onStartNextStudent,
+  onImmediateNextExam,
   onRetakeSameConfig,
   onOpenHistory,
   onUpdateItemScore,
@@ -172,13 +181,32 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
             <span>สอบชุดเดิมอีกครั้ง</span>
           </button>
 
+          {totalRosterCount > 0 && (
+            <span className="text-xs font-mono tabular-nums text-slate-500 mr-1">
+              สอบแล้ว {testedCount}/{totalRosterCount} คน
+            </span>
+          )}
+
           <button
             type="button"
             onClick={onStartNextStudent}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Users className="w-4 h-4" />
-            <span>สอบนักศึกษาคนถัดไป</span>
+            <span>ไปหน้าเลือกคนถัดไป</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={nextUntestedStudent ? onImmediateNextExam : onStartNextStudent}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <Users className="w-4 h-4" />
+            <span>
+              {nextUntestedStudent
+                ? `เริ่มสอบคนถัดไปทันที (เลขที่ ${nextUntestedStudent.seatNumber || '-'})`
+                : 'สอบนักศึกษาคนถัดไป'}
+            </span>
           </button>
         </div>
       </div>
@@ -233,28 +261,31 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
             คะแนนแยกตามระบบอวัยวะ
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {systemBreakdown.map((sb) => (
-              <div key={sb.id} className="border border-slate-200/80 rounded-xl p-3.5 bg-slate-50/70">
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 truncate">
-                    <AnatomicalSystemIcon systemId={sb.id} className="w-4 h-4 text-teal-700 shrink-0" />
-                    <span className="truncate">{sb.nameTh}</span>
-                  </span>
-                  <span className="font-mono tabular-nums font-bold text-teal-800 shrink-0">
-                    {sb.earned}/{sb.max}
-                  </span>
+            {systemBreakdown.map((sb) => {
+              const st = SYSTEM_THEMES[sb.id];
+              return (
+                <div key={sb.id} className={`border ${st.softBorder} rounded-xl p-3.5 ${st.softBg}`}>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 truncate">
+                      <AnatomicalSystemIcon systemId={sb.id} className={`w-4 h-4 ${st.iconText} shrink-0`} />
+                      <span className="truncate">{sb.nameTh}</span>
+                    </span>
+                    <span className={`font-mono tabular-nums font-bold ${st.accentText} shrink-0`}>
+                      {sb.earned}/{sb.max}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 h-2 w-full bg-white/90 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${st.barFill} rounded-full`}
+                      style={{ width: `${sb.pct}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1.5 font-mono tabular-nums">
+                    {sb.count} ข้อ · {sb.pct}%
+                  </p>
                 </div>
-                <div className="mt-2.5 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-teal-600 rounded-full"
-                    style={{ width: `${sb.pct}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1.5 font-mono tabular-nums">
-                  {sb.count} ข้อ · {sb.pct}%
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

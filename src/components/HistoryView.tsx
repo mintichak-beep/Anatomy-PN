@@ -188,7 +188,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <button
                 type="button"
                 onClick={exportOverviewCsv}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs cursor-pointer whitespace-nowrap shrink-0"
               >
                 <Download className="w-4 h-4" />
                 <span>ดาวน์โหลดคะแนนภาพรวมทั้งหมด (CSV)</span>
@@ -206,7 +206,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <button
             type="button"
             onClick={onStartNewExam}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl cursor-pointer whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           >
             <span>จัดชุดสอบใหม่</span>
           </button>
@@ -216,45 +216,45 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       {/* Overview KPI Strip when sessions exist */}
       {totalStudents > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>จำนวนนักศึกษาที่สอบแล้ว</span>
-              <Users className="w-4 h-4 text-slate-400" />
+              <Users className="w-4 h-4 text-indigo-500" />
             </div>
             <p className="font-mono tabular-nums text-2xl font-bold text-slate-900 mt-1.5">
               {totalStudents} <span className="text-xs font-sans font-normal text-slate-500">คน</span>
             </p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="bg-gradient-to-br from-sky-50/80 to-white border border-sky-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between text-xs text-sky-700 font-medium">
               <span>คะแนนเฉลี่ยภาพรวม</span>
-              <TrendingUp className="w-4 h-4 text-teal-600" />
+              <TrendingUp className="w-4 h-4 text-sky-600" />
             </div>
-            <p className="font-mono tabular-nums text-2xl font-bold text-teal-800 mt-1.5">
+            <p className="font-mono tabular-nums text-2xl font-bold text-sky-700 mt-1.5">
               {avgPct}%
             </p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>คะแนนสูงสุด / ต่ำสุด</span>
-              <Award className="w-4 h-4 text-amber-600" />
+              <Award className="w-4 h-4 text-amber-500" />
             </div>
             <p className="font-mono tabular-nums text-2xl font-bold text-slate-900 mt-1.5">
               {maxPct}% <span className="text-sm font-normal text-slate-400">/ {minPct}%</span>
             </p>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="bg-gradient-to-br from-emerald-50/80 to-white border border-emerald-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between text-xs text-emerald-700 font-medium">
               <span>ผ่านเกณฑ์ (&ge; 60%)</span>
               <span className="font-mono tabular-nums text-emerald-700 font-semibold">
                 {Math.round((passCount / totalStudents) * 100)}%
               </span>
             </div>
             <p className="font-mono tabular-nums text-2xl font-bold text-emerald-700 mt-1.5">
-              {passCount} <span className="text-xs font-sans font-normal text-slate-500">/ {totalStudents} คน</span>
+              {passCount} <span className="text-xs font-sans font-normal text-emerald-600">/ {totalStudents} คน</span>
             </p>
           </div>
         </div>
@@ -316,7 +316,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <button
             type="button"
             onClick={onStartNewExam}
-            className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 rounded-lg cursor-pointer"
+            className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs cursor-pointer"
           >
             <span>เริ่มสอบนักศึกษาคนแรก</span>
           </button>
@@ -385,7 +385,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onViewSession(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-50 rounded-lg cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 rounded-lg cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>ดูผล</span>
