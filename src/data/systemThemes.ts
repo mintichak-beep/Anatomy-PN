@@ -102,3 +102,7 @@ export const SYSTEM_THEMES: Record<SystemId, SystemTheme> = {
     buttonBg: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200',
   },
 };
+
+export function getSystemTheme(systemId: string): SystemTheme {
+  return (SYSTEM_THEMES as Record<string, SystemTheme | undefined>)[systemId] ?? SYSTEM_THEMES.respiratory;
+}

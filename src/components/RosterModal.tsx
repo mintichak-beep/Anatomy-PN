@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { X, Plus, Trash2, Upload, Users, Download } from 'lucide-react';
 import { StudentRosterEntry } from '../types/anatomy';
 
 interface RosterModalProps {
@@ -11,6 +11,7 @@ interface RosterModalProps {
 
 function parseRosterText(raw: string): StudentRosterEntry[] {
   const lines = raw
+    .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
@@ -18,9 +19,9 @@ function parseRosterText(raw: string): StudentRosterEntry[] {
   const parsed: StudentRosterEntry[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Split by tab (Excel copy-paste), comma, or pipe
+    // Split by tab (Excel copy-paste), comma, semicolon, or pipe
     const parts = line
-      .split(/\t|,|\|/)
+      .split(/\t|,|;|\|/)
       .map((p) => p.replace(/^"|"$/g, '').trim());
 
     if (parts.length === 0) continue;
@@ -130,6 +131,26 @@ export const RosterModal: React.FC<RosterModalProps> = ({
       studentName: `นักศึกษา เลขที่ ${idx + 1}`,
     }));
     onSaveRoster([...roster, ...generated]);
+  };
+
+  const handleDownloadSampleCsv = () => {
+    const headers = ['เลขที่', 'รหัสประจำตัว', 'ชื่อ-นามสกุล'];
+    const rows = Array.from({ length: 30 }, (_, idx) => {
+      const num = idx + 1;
+      const padded = String(num).padStart(2, '0');
+      return [String(num), `67010${padded}`, `นศ. ตัวอย่างที่ ${num}`];
+    });
+    const escapeCsv = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`;
+    const csv = '\uFEFF' + [headers, ...rows].map((r) => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anatomy-roster-template-30.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -294,6 +315,21 @@ export const RosterModal: React.FC<RosterModalProps> = ({
           </div>
         ) : (
           <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs">
+              <div className="text-emerald-900">
+                <span className="font-semibold">รูปแบบไฟล์ที่รองรับ:</span>{' '}
+                <span>3 คอลัมน์ (เลขที่, รหัสประจำตัว, ชื่อ-นามสกุล) เปิดแก้ใน Excel แล้วนำเข้าได้ทันที</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadSampleCsv}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>ดาวน์โหลดไฟล์ตัวอย่าง 30 คน (.CSV)</span>
+              </button>
+            </div>
+
             <label className="flex items-center justify-center gap-2 w-full px-4 py-3 text-xs font-semibold text-sky-700 bg-sky-50 border border-dashed border-sky-300 rounded-xl hover:bg-sky-100 cursor-pointer">
               <Upload className="w-4 h-4" />
               <span>อัปโหลดไฟล์ .CSV รายชื่อนักศึกษา (คอลัมน์: เลขที่, รหัสประจำตัว, ชื่อ-นามสกุล)</span>

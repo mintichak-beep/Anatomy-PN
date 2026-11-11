@@ -21,7 +21,7 @@ import {
   SystemId,
 } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
-import { SYSTEM_THEMES } from '../data/systemThemes';
+import { getSystemTheme } from '../data/systemThemes';
 
 interface SetupLobbyProps {
   systems: AnatomySystem[];
@@ -319,7 +319,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 {customPlates.map((plate) => {
                   const isSelected = config.selectedCustomPlateIds.includes(plate.id);
                   const sys = systems.find((s) => s.id === plate.systemId);
-                  const theme = SYSTEM_THEMES[plate.systemId];
+                  const theme = getSystemTheme(plate.systemId);
                   return (
                     <div
                       key={plate.id}
@@ -445,7 +445,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                 const sysTermCount = allTerms.filter((t) => t.systemId === sys.id).length;
                 const sysPlatesCount = customPlates.filter((p) => p.systemId === sys.id).length;
                 const hasPlate = sysPlatesCount > 0;
-                const theme = SYSTEM_THEMES[sys.id];
+                const theme = getSystemTheme(sys.id);
 
                 return (
                   <div
