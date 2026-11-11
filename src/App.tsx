@@ -79,7 +79,6 @@ export default function App() {
     selectedCustomPlateIds: customPlates.map((p) => p.id),
     termsPerSystem: 1,
     secondsPerQuestion: 30,
-    showThaiInPrompt: false,
     shuffle: true,
     autoStartTimer: true,
   });
@@ -292,16 +291,16 @@ export default function App() {
   const navLinkClass = (active: boolean) =>
     `text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer pb-0.5 border-b-2 ${
       active
-        ? 'text-slate-900 border-sky-700'
+        ? 'text-slate-900 border-teal-700'
         : 'text-slate-600 border-transparent hover:text-slate-900'
     }`;
 
   const canQuickStart = buildExamPool(config).length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex flex-col bg-atlas-grid text-slate-900">
       {/* Top Bar Contract: 3 zones separated by gap-8 */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200/90">
         <div className="max-w-[1320px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-8">
           <button
             type="button"
@@ -358,7 +357,7 @@ export default function App() {
                 type="button"
                 disabled={!canQuickStart}
                 onClick={() => startExamWithConfig(config)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 disabled:bg-slate-300 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 disabled:bg-slate-300 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 เริ่มสอบทันที
               </button>
@@ -372,7 +371,7 @@ export default function App() {
             type="button"
             onClick={() => setView('setup')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'setup' ? 'text-sky-700 font-semibold' : 'text-slate-600'
+              view === 'setup' ? 'text-teal-700 font-semibold' : 'text-slate-600'
             }`}
           >
             จัดชุดสอบ
@@ -381,7 +380,7 @@ export default function App() {
             type="button"
             onClick={() => setView('library')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'library' ? 'text-sky-700 font-semibold' : 'text-slate-600'
+              view === 'library' ? 'text-teal-700 font-semibold' : 'text-slate-600'
             }`}
           >
             คลังคำศัพท์ 8 ระบบ
@@ -390,7 +389,7 @@ export default function App() {
             type="button"
             onClick={() => setView('history')}
             className={`text-xs font-medium px-2 py-1 ${
-              view === 'history' ? 'text-sky-700 font-semibold' : 'text-slate-600'
+              view === 'history' ? 'text-teal-700 font-semibold' : 'text-slate-600'
             }`}
           >
             ประวัติ ({history.length})

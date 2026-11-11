@@ -20,6 +20,23 @@
   font-variant-numeric: tabular-nums;
 }
 
+.bg-atlas-grid {
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.bg-specimen-stage {
+  background-color: #0b1120;
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(14, 116, 144, 0.14), transparent 70%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+}
+
 @keyframes target-ripple {
   0% {
     transform: translate(-50%, -50%) scale(0.85);

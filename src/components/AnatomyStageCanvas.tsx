@@ -1,17 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Crosshair, ImageOff } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm } from '../types/anatomy';
+import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 
 interface AnatomyStageCanvasProps {
   system: AnatomySystem;
   term: AnatomyTerm;
-  showThaiInPrompt?: boolean;
 }
 
 export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   system,
   term,
-  showThaiInPrompt = false,
 }) => {
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -67,25 +66,26 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div className="flex flex-col bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       {/* Top Plate Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-200 bg-slate-50/70">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="font-semibold text-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
+        <div className="flex items-center gap-2 text-xs text-slate-600 min-w-0">
+          <AnatomicalSystemIcon systemId={system.id} className="w-4 h-4 text-teal-700 shrink-0" />
+          <span className="font-semibold text-slate-900 truncate">
             {term.customPlateTitle || system.nameTh}
           </span>
-          <span aria-hidden="true">·</span>
-          <span>{system.nameTh}</span>
+          <span aria-hidden="true" className="text-slate-300">·</span>
+          <span className="truncate">{system.nameTh}</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => {
               setLaserMode((prev) => !prev);
               setLaserPos(null);
             }}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               laserMode
                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -96,7 +96,7 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
             <span>{laserMode ? 'เลเซอร์เปิดอยู่' : 'เลเซอร์อาจารย์'}</span>
           </button>
 
-          <div className="flex items-center bg-white border border-slate-200 rounded-md overflow-hidden">
+          <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={handleZoomOut}
@@ -133,30 +133,31 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
       </div>
 
       {/* System Prompt Banner: Question Term Only (No Answer Key) */}
-      <div className="px-5 py-4 bg-sky-50/90 border-b border-sky-100 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium text-sky-800">
-            คำถามข้อนี้ · ให้นักศึกษาตอบตำแหน่งและอธิบายคำศัพท์บนภาพภายใน 30 วินาที
-          </p>
-          <p className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
+      <div className="px-5 py-4 bg-teal-50/60 border-b border-teal-100 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-xs font-medium text-teal-800">
+            <span>คำถามข้อนี้</span>
+            <span aria-hidden="true" className="text-teal-300">·</span>
+            <span>ให้นักศึกษาชี้ตำแหน่งและอธิบายโครงสร้างบนภาพ</span>
+          </div>
+          <p className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mt-1">
             {term.termEn}
-            {showThaiInPrompt && term.termTh && (
-              <span className="font-medium text-slate-600 text-lg ml-2.5">
-                — {term.termTh}
-              </span>
-            )}
           </p>
+        </div>
+
+        <div className="hidden sm:flex w-11 h-11 rounded-xl bg-white border border-teal-200/80 text-teal-700 items-center justify-center shrink-0">
+          <AnatomicalSystemIcon systemId={system.id} className="w-6 h-6" />
         </div>
       </div>
 
-      {/* 4:3 Instructor-Provided Image Stage */}
+      {/* 4:3 Clinical Specimen Lightbox Stage */}
       <div
         ref={containerRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
-        className={`relative w-full aspect-[4/3] bg-slate-100 overflow-hidden select-none ${
+        className={`relative w-full aspect-[4/3] bg-specimen-stage overflow-hidden select-none ${
           laserMode ? 'cursor-crosshair' : zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         }`}
       >
@@ -177,10 +178,10 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
               className="w-full h-full object-contain"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-500 p-6 text-center">
-              <ImageOff className="w-10 h-10 mb-2 text-slate-400" />
-              <p className="text-sm font-medium text-slate-700">{system.nameTh}</p>
-              <p className="text-xs text-slate-500 mt-1">ไม่พบรูปภาพสำหรับคำถามนี้</p>
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+              <ImageOff className="w-10 h-10 mb-2 text-slate-500" />
+              <p className="text-sm font-medium text-slate-200">{system.nameTh}</p>
+              <p className="text-xs text-slate-400 mt-1">ไม่พบรูปภาพสำหรับคำถามนี้</p>
             </div>
           )}
         </div>
@@ -195,8 +196,8 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <div className="w-6 h-6 rounded-full bg-rose-500/25 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white shadow-sm" />
+            <div className="w-7 h-7 rounded-full bg-rose-500/30 flex items-center justify-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white shadow-sm" />
             </div>
           </div>
         )}

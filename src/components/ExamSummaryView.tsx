@@ -10,6 +10,7 @@ import {
   Award,
 } from 'lucide-react';
 import { AnatomySystem, ExamGrade, ExamSessionRecord } from '../types/anatomy';
+import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 
 interface ExamSummaryViewProps {
   session: ExamSessionRecord;
@@ -96,8 +97,8 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
       : pct >= 60
       ? {
           label: 'ผ่านเกณฑ์มาตรฐาน',
-          color: 'text-sky-800 bg-sky-50 border-sky-200',
-          icon: <CheckCircle2 className="w-5 h-5 text-sky-600" />,
+          color: 'text-teal-900 bg-teal-50 border-teal-200',
+          icon: <CheckCircle2 className="w-5 h-5 text-teal-700" />,
         }
       : {
           label: 'ควรทบทวนเพิ่มเติม',
@@ -139,7 +140,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
             {session.seatNumber && (
-              <span className="mr-3 text-lg font-mono font-semibold text-sky-800">
+              <span className="mr-3 text-lg font-mono font-semibold text-teal-800">
                 เลขที่ {session.seatNumber}
               </span>
             )}
@@ -156,7 +157,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           <button
             type="button"
             onClick={() => exportSessionCsv(session, systems)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>ส่งออก CSV</span>
@@ -165,7 +166,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           <button
             type="button"
             onClick={onRetakeSameConfig}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>สอบชุดเดิมอีกครั้ง</span>
@@ -174,7 +175,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           <button
             type="button"
             onClick={onStartNextStudent}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Users className="w-4 h-4" />
             <span>สอบนักศึกษาคนถัดไป</span>
@@ -227,27 +228,30 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
 
       {/* Breakdown by System */}
       {systemBreakdown.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-base font-semibold text-slate-900 mb-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <h2 className="text-base font-bold text-slate-900 mb-4">
             คะแนนแยกตามระบบอวัยวะ
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {systemBreakdown.map((sb) => (
-              <div key={sb.id} className="border border-slate-100 rounded-lg p-3.5 bg-slate-50/60">
+              <div key={sb.id} className="border border-slate-200/80 rounded-xl p-3.5 bg-slate-50/70">
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="font-semibold text-slate-900">{sb.nameTh}</span>
-                  <span className="font-mono tabular-nums font-bold text-sky-800">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900 truncate">
+                    <AnatomicalSystemIcon systemId={sb.id} className="w-4 h-4 text-teal-700 shrink-0" />
+                    <span className="truncate">{sb.nameTh}</span>
+                  </span>
+                  <span className="font-mono tabular-nums font-bold text-teal-800 shrink-0">
                     {sb.earned}/{sb.max}
                   </span>
                 </div>
-                <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                <div className="mt-2.5 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-sky-600 rounded-full"
+                    className="h-full bg-teal-600 rounded-full"
                     style={{ width: `${sb.pct}%` }}
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-1.5 font-mono tabular-nums">
-                  {sb.count} ภาพ · {sb.pct}%
+                  {sb.count} ข้อ · {sb.pct}%
                 </p>
               </div>
             ))}
@@ -256,15 +260,15 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
       )}
 
       {/* Detailed Item-by-Item Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-bold text-slate-900">
             รายละเอียดคะแนนรายภาพ ({session.answers.length} ข้อ)
           </h2>
           <button
             type="button"
             onClick={onOpenHistory}
-            className="text-xs font-semibold text-sky-700 hover:underline cursor-pointer"
+            className="text-xs font-semibold text-teal-700 hover:underline cursor-pointer whitespace-nowrap shrink-0"
           >
             ดูและดาวน์โหลดคะแนนภาพรวมทุกคน &rarr;
           </button>
@@ -292,7 +296,6 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
                     </td>
                     <td className="py-3 px-4">
                       <p className="font-semibold text-slate-900">{ans.termEn}</p>
-                      <p className="text-xs text-slate-500">{ans.termTh}</p>
                     </td>
                     <td className="py-3 px-4 text-xs text-slate-600">
                       {sys?.nameTh || ans.systemId}

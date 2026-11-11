@@ -61,7 +61,6 @@ export interface ExamConfig {
   selectedCustomPlateIds: string[];
   termsPerSystem: number; // 1 = 1 term per system (actual exam), 2 = 2 per system, 0 = all
   secondsPerQuestion: number; // Default 30
-  showThaiInPrompt: boolean;
   shuffle: boolean;
   autoStartTimer: boolean;
 }

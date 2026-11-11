@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm, SystemId } from '../types/anatomy';
+import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 
 interface LibraryManagerViewProps {
   systems: AnatomySystem[];
@@ -70,7 +71,7 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-sky-700 hover:bg-sky-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>เพิ่มคำศัพท์เข้าคลัง</span>
@@ -96,13 +97,14 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
               key={sys.id}
               type="button"
               onClick={() => setFilterSystem(sys.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 filterSystem === sys.id
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-white text-teal-800 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {sys.nameTh}
+              <AnatomicalSystemIcon systemId={sys.id} className="w-3.5 h-3.5" />
+              <span>{sys.nameTh}</span>
             </button>
           ))}
         </div>
@@ -148,7 +150,10 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
                         {idx + 1}
                       </td>
                       <td className="py-3 px-4 text-xs text-slate-600">
-                        {sys?.nameTh || term.systemId}
+                        <span className="inline-flex items-center gap-1.5">
+                          <AnatomicalSystemIcon systemId={term.systemId} className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                          <span>{sys?.nameTh || term.systemId}</span>
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-semibold text-slate-900">{term.termEn}</span>
