@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm, SystemId } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
-import { getSystemTheme } from '../data/systemThemes';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface LibraryManagerViewProps {
   systems: AnatomySystem[];
@@ -94,7 +94,7 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
             ทุกระบบ ({terms.length})
           </button>
           {systems.map((sys) => {
-            const theme = getSystemTheme(sys.id);
+            const theme = SYSTEM_THEMES[sys.id];
             const isActive = filterSystem === sys.id;
             return (
               <button
@@ -149,7 +149,7 @@ export const LibraryManagerView: React.FC<LibraryManagerViewProps> = ({
               ) : (
                 filteredTerms.map((term, idx) => {
                   const sys = systems.find((s) => s.id === term.systemId);
-                  const theme = getSystemTheme(term.systemId);
+                  const theme = SYSTEM_THEMES[term.systemId];
                   return (
                     <tr key={term.id} className="hover:bg-sky-50/40">
                       <td className="py-3 px-4 font-mono tabular-nums text-xs text-slate-400">

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   CheckCircle2,
+  AlertCircle,
   XCircle,
   Download,
   RotateCcw,
@@ -10,7 +11,7 @@ import {
 } from 'lucide-react';
 import { AnatomySystem, ExamGrade, ExamSessionRecord, StudentRosterEntry } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
-import { getSystemTheme } from '../data/systemThemes';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface ExamSummaryViewProps {
   session: ExamSessionRecord;
@@ -98,20 +99,20 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
   const assessment =
     pct >= 80
       ? {
-          label: 'ผ่านเกณฑ์ดีเยี่ยม (Pass)',
+          label: 'ผ่านเกณฑ์ดีเยี่ยม',
           color: 'text-emerald-800 bg-emerald-50 border-emerald-200',
           icon: <Award className="w-5 h-5 text-emerald-600" />,
         }
       : pct >= 60
       ? {
-          label: 'ผ่านเกณฑ์มาตรฐาน (Pass)',
-          color: 'text-sky-800 bg-sky-50 border-sky-200',
-          icon: <CheckCircle2 className="w-5 h-5 text-sky-600" />,
+          label: 'ผ่านเกณฑ์มาตรฐาน',
+          color: 'text-teal-900 bg-teal-50 border-teal-200',
+          icon: <CheckCircle2 className="w-5 h-5 text-teal-700" />,
         }
       : {
-          label: 'ไม่ผ่านเกณฑ์ (Fail)',
-          color: 'text-rose-800 bg-rose-50 border-rose-200',
-          icon: <XCircle className="w-5 h-5 text-rose-600" />,
+          label: 'ควรทบทวนเพิ่มเติม',
+          color: 'text-amber-800 bg-amber-50 border-amber-200',
+          icon: <AlertCircle className="w-5 h-5 text-amber-600" />,
         };
 
   // System breakdown
@@ -261,7 +262,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {systemBreakdown.map((sb) => {
-              const st = getSystemTheme(sb.id);
+              const st = SYSTEM_THEMES[sb.id];
               return (
                 <div key={sb.id} className={`border ${st.softBorder} rounded-xl p-3.5 ${st.softBg}`}>
                   <div className="flex items-center justify-between gap-2 text-sm">

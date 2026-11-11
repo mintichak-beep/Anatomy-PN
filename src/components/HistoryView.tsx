@@ -88,11 +88,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     const rows = filtered.map((s, idx) => {
       const pct = s.maxScore > 0 ? Math.round((s.totalScore / s.maxScore) * 100) : 0;
       const evalLabel =
-        pct >= 80
-          ? 'ผ่านเกณฑ์ดีเยี่ยม (Pass)'
-          : pct >= 60
-          ? 'ผ่านเกณฑ์มาตรฐาน (Pass)'
-          : 'ไม่ผ่านเกณฑ์ (Fail)';
+        pct >= 80 ? 'ผ่านเกณฑ์ดีเยี่ยม' : pct >= 60 ? 'ผ่านเกณฑ์มาตรฐาน' : 'ควรทบทวนเพิ่มเติม';
       const avgSec =
         s.answers.length > 0
           ? (
@@ -260,11 +256,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <p className="font-mono tabular-nums text-2xl font-bold text-emerald-700 mt-1.5">
               {passCount} <span className="text-xs font-sans font-normal text-emerald-600">/ {totalStudents} คน</span>
             </p>
-            {totalStudents - passCount > 0 && (
-              <p className="text-[11px] font-medium text-rose-600 mt-1">
-                ไม่ผ่าน (Fail): {totalStudents - passCount} คน
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -383,17 +374,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                               ? 'text-emerald-700'
                               : pct >= 60
                               ? 'text-sky-700'
-                              : 'text-rose-600'
+                              : 'text-amber-700'
                           }`}
                         >
                           {pct}%
-                        </span>
-                        <span
-                          className={`block text-[11px] font-sans font-semibold ${
-                            pct >= 60 ? 'text-emerald-700' : 'text-rose-600'
-                          }`}
-                        >
-                          {pct >= 60 ? 'ผ่าน (Pass)' : 'ไม่ผ่าน (Fail)'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">

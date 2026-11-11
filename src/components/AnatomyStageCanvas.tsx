@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Crosshair, ImageOff } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
-import { getSystemTheme } from '../data/systemThemes';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface AnatomyStageCanvasProps {
   system: AnatomySystem;
@@ -18,7 +18,7 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   totalQuestions,
 }) => {
   const hasAutoTarget = term.targetX !== undefined && term.targetY !== undefined;
-  const theme = getSystemTheme(system.id);
+  const theme = SYSTEM_THEMES[system.id];
 
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });

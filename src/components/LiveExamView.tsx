@@ -52,11 +52,9 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const lastSecondRef = useRef<number>(config.secondsPerQuestion);
   const timeUpPlayedRef = useRef<boolean>(false);
 
-  const currentTerm = terms[currentIndex] || terms[0];
-  const currentSystem = currentTerm
-    ? systems.find((s) => s.id === currentTerm.systemId) || systems[0]
-    : systems[0];
-  const currentAnswer = currentTerm ? answers[currentTerm.id] : undefined;
+  const currentTerm = terms[currentIndex];
+  const currentSystem = systems.find((s) => s.id === currentTerm.systemId) || systems[0];
+  const currentAnswer = answers[currentTerm.id];
 
   const totalMs = config.secondsPerQuestion * 1000;
   const remainingSec = Math.max(0, timeLeftMs / 1000);
@@ -65,34 +63,30 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const isWarning = !isTimedOut && remainingSec <= 10;
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || timeLeftMs <= 0) return;
 
     const interval = window.setInterval(() => {
       setTimeLeftMs((prev) => {
-        if (prev <= 0) return 0;
-        return Math.max(0, prev - 100);
+        const next = Math.max(0, prev - 100);
+        const nextWholeSec = Math.ceil(next / 1000);
+
+        if (nextWholeSec !== lastSecondRef.current) {
+          lastSecondRef.current = nextWholeSec;
+          if (nextWholeSec > 0 && nextWholeSec <= 5) {
+            playTickSound(isMuted);
+          }
+        }
+
+        if (next === 0 && !timeUpPlayedRef.current) {
+          timeUpPlayedRef.current = true;
+          playTimeUpSound(isMuted);
+        }
+
+        return next;
       });
     }, 100);
 
     return () => window.clearInterval(interval);
-  }, [isRunning]);
-
-  useEffect(() => {
-    if (!isRunning) return;
-    const wholeSec = Math.ceil(timeLeftMs / 1000);
-
-    if (wholeSec !== lastSecondRef.current) {
-      lastSecondRef.current = wholeSec;
-      if (wholeSec > 0 && wholeSec <= 5) {
-        playTickSound(isMuted);
-      }
-    }
-
-    if (timeLeftMs === 0 && !timeUpPlayedRef.current) {
-      timeUpPlayedRef.current = true;
-      setIsRunning(false);
-      playTimeUpSound(isMuted);
-    }
   }, [isRunning, timeLeftMs, isMuted]);
 
   const loadQuestion = useCallback(
@@ -133,7 +127,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
 
   const handleGrade = useCallback(
     (score: ExamGrade) => {
-      if (!currentTerm) return;
       const elapsedSec = Number(
         Math.min(config.secondsPerQuestion, Math.max(0, (totalMs - timeLeftMs) / 1000)).toFixed(1)
       );
@@ -166,7 +159,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
 
   const handleNoteChange = (val: string) => {
     setDraftNote(val);
-    if (currentTerm && currentAnswer) {
+    if (currentAnswer) {
       setAnswers((prev) => ({
         ...prev,
         [currentTerm.id]: { ...currentAnswer, note: val },
@@ -249,8 +242,6 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progressFraction);
-
-  if (!currentTerm) return null;
 
   return (
     <div className="max-w-[1320px] mx-auto px-4 md:px-6 py-5">

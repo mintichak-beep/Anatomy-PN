@@ -34,35 +34,44 @@ function shuffleArray<T>(items: T[]): T[] {
   return arr;
 }
 
-function safeLoadArray<T>(key: string): T[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 export default function App() {
   const [view, setView] = useState<AppView>('setup');
 
-  const [customTerms, setCustomTerms] = useState<AnatomyTerm[]>(() =>
-    safeLoadArray<AnatomyTerm>(STORAGE_CUSTOM_TERMS_KEY)
-  );
+  const [customTerms, setCustomTerms] = useState<AnatomyTerm[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_CUSTOM_TERMS_KEY);
+      return raw ? (JSON.parse(raw) as AnatomyTerm[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  const [customPlates, setCustomPlates] = useState<CustomPlate[]>(() =>
-    safeLoadArray<CustomPlate>(STORAGE_CUSTOM_PLATES_KEY)
-  );
+  const [customPlates, setCustomPlates] = useState<CustomPlate[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_CUSTOM_PLATES_KEY);
+      return raw ? (JSON.parse(raw) as CustomPlate[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  const [history, setHistory] = useState<ExamSessionRecord[]>(() =>
-    safeLoadArray<ExamSessionRecord>(STORAGE_HISTORY_KEY)
-  );
+  const [history, setHistory] = useState<ExamSessionRecord[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_HISTORY_KEY);
+      return raw ? (JSON.parse(raw) as ExamSessionRecord[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  const [roster, setRoster] = useState<StudentRosterEntry[]>(() =>
-    safeLoadArray<StudentRosterEntry>(STORAGE_ROSTER_KEY)
-  );
+  const [roster, setRoster] = useState<StudentRosterEntry[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_ROSTER_KEY);
+      return raw ? (JSON.parse(raw) as StudentRosterEntry[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [examDescription, setExamDescription] = useState<string>(() => {
     try {

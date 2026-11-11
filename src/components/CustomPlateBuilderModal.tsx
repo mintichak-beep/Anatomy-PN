@@ -7,7 +7,7 @@ import {
   CustomPlateTerm,
   SystemId,
 } from '../types/anatomy';
-import { getSystemTheme } from '../data/systemThemes';
+import { SYSTEM_THEMES } from '../data/systemThemes';
 
 interface CustomPlateBuilderModalProps {
   systems: AnatomySystem[];
@@ -28,10 +28,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
   onSave,
   onClose,
 }) => {
-  const candidateSystemId = initialPlate?.systemId || initialSystemId || 'respiratory';
-  const defaultSystemId: SystemId = systems.some((s) => s.id === candidateSystemId)
-    ? candidateSystemId
-    : (systems[0]?.id || 'respiratory');
+  const defaultSystemId = initialPlate?.systemId || initialSystemId || 'respiratory';
   const [title, setTitle] = useState(initialPlate?.title || '');
   const [systemId, setSystemId] = useState<SystemId>(defaultSystemId);
   const [imageUrl, setImageUrl] = useState(initialPlate?.imageUrl || initialImageUrl || '');
@@ -271,7 +268,7 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
 
   const pinnedCount = terms.filter((t) => t.targetX !== undefined && t.targetY !== undefined).length;
   const activeTerm = terms.find((t) => t.id === activePinTermId) || null;
-  const activeTheme = getSystemTheme(systemId);
+  const activeTheme = SYSTEM_THEMES[systemId];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
