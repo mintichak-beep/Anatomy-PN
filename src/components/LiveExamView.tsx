@@ -46,6 +46,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   const [autoAdvance, setAutoAdvance] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [answers, setAnswers] = useState<Record<string, ExamAnswerRecord>>({});
+  const [targetOverrides, setTargetOverrides] = useState<Record<string, { x: number; y: number }>>({});
   const [draftNote, setDraftNote] = useState('');
   const [confirmEnd, setConfirmEnd] = useState(false);
 
@@ -137,6 +138,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
       const elapsedSec = Number(
         Math.min(config.secondsPerQuestion, Math.max(0, (totalMs - timeLeftMs) / 1000)).toFixed(1)
       );
+      const override = targetOverrides[currentTerm.id];
       const record: ExamAnswerRecord = {
         termId: currentTerm.id,
         systemId: currentTerm.systemId,
@@ -147,8 +149,8 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         timedOut: timeLeftMs <= 0,
         note: draftNote.trim(),
         gradedAt: new Date().toISOString(),
-        targetX: currentTerm.targetX,
-        targetY: currentTerm.targetY,
+        targetX: override?.x ?? currentTerm.targetX,
+        targetY: override?.y ?? currentTerm.targetY,
       };
 
       setAnswers((prev) => ({ ...prev, [currentTerm.id]: record }));
@@ -161,7 +163,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         }, 260);
       }
     },
-    [autoAdvance, config.secondsPerQuestion, currentIndex, currentTerm, draftNote, isMuted, loadQuestion, terms.length, timeLeftMs, totalMs]
+    [autoAdvance, config.secondsPerQuestion, currentIndex, currentTerm, draftNote, isMuted, loadQuestion, targetOverrides, terms.length, timeLeftMs, totalMs]
   );
 
   const handleNoteChange = (val: string) => {
@@ -178,6 +180,7 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
     const orderedRecords: ExamAnswerRecord[] = terms.map((term) => {
       const existing = answers[term.id];
       if (existing) return existing;
+      const override = targetOverrides[term.id];
       return {
         termId: term.id,
         systemId: term.systemId,
@@ -188,12 +191,12 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
         timedOut: false,
         note: 'ไม่ได้บันทึกคะแนน',
         gradedAt: new Date().toISOString(),
-        targetX: term.targetX,
-        targetY: term.targetY,
+        targetX: override?.x ?? term.targetX,
+        targetY: override?.y ?? term.targetY,
       };
     });
     onCompleteExam(orderedRecords, startedAt);
-  }, [answers, onCompleteExam, startedAt, terms]);
+  }, [answers, onCompleteExam, startedAt, targetOverrides, terms]);
 
   const handleNext = useCallback(() => {
     if (currentIndex < terms.length - 1) {
@@ -342,6 +345,9 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
             term={currentTerm}
             questionIndex={currentIndex + 1}
             totalQuestions={terms.length}
+            onTargetChange={(x, y) =>
+              setTargetOverrides((prev) => ({ ...prev, [currentTerm.id]: { x, y } }))
+            }
           />
         </div>
 

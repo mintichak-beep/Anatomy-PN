@@ -30,6 +30,7 @@ export interface AnatomyTerm {
   customPlateTitle?: string;
   targetX?: number; // 0-100% horizontal laser coordinate on plate
   targetY?: number; // 0-100% vertical laser coordinate on plate
+  isAutoLaser?: boolean;
   isCustom?: boolean;
 }
 

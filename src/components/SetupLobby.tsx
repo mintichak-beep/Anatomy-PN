@@ -370,7 +370,7 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                                 ).length;
                                 return pinned > 0
                                   ? `จุดเลเซอร์ ${pinned} จุด`
-                                  : `${plate.terms.length} คำศัพท์`;
+                                  : 'สุ่มเลเซอร์อัตโนมัติในห้องสอบ';
                               })()}
                             </span>
                           </div>

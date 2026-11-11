@@ -1,14 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Crosshair } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, Crosshair, Shuffle } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 import { getSystemTheme } from '../data/systemThemes';
+import { pickSmartRandomLaserSpot } from '../utils/laserRandomizer';
 
 interface AnatomyStageCanvasProps {
   system: AnatomySystem;
   term: AnatomyTerm;
   questionIndex?: number;
   totalQuestions?: number;
+  onTargetChange?: (x: number, y: number) => void;
 }
 
 export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
@@ -16,8 +18,14 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   term,
   questionIndex,
   totalQuestions,
+  onTargetChange,
 }) => {
-  const hasAutoTarget = term.targetX !== undefined && term.targetY !== undefined;
+  const [activeTarget, setActiveTarget] = useState<{ x: number; y: number } | null>(() =>
+    term.targetX !== undefined && term.targetY !== undefined
+      ? { x: term.targetX, y: term.targetY }
+      : null
+  );
+  const hasAutoTarget = activeTarget !== null;
   const theme = getSystemTheme(system.id);
 
   const [zoom, setZoom] = useState<number>(1);
@@ -28,6 +36,34 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
   const [manualLaserPos, setManualLaserPos] = useState<{ x: number; y: number } | null>(null);
   const [imgError, setImgError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!term.isAutoLaser || !term.customImageUrl) return;
+    let cancelled = false;
+    void pickSmartRandomLaserSpot(term.customImageUrl).then((spot) => {
+      if (cancelled) return;
+      setActiveTarget(spot);
+      setLaserMode(false);
+      onTargetChange?.(spot.x, spot.y);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Only refine once per mounted question
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleRerollLaser = async () => {
+    if (!term.customImageUrl) return;
+    const spot = await pickSmartRandomLaserSpot(
+      term.customImageUrl,
+      activeTarget || undefined
+    );
+    setActiveTarget(spot);
+    setLaserMode(false);
+    setManualLaserPos(null);
+    onTargetChange?.(spot.x, spot.y);
+  };
 
   const handleZoomIn = () => setZoom((z) => Math.min(2.4, Number((z + 0.4).toFixed(1))));
   const handleZoomOut = () => {
@@ -87,6 +123,18 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {term.customImageUrl && !imgError && (
+            <button
+              type="button"
+              onClick={() => void handleRerollLaser()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              title="ให้ระบบสุ่มย้ายจุดเลเซอร์บนภาพใหม่"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+              <span>สุ่มจุดเลเซอร์ใหม่</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -210,12 +258,12 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
           )}
 
           {/* System Auto-Pointed Laser Dot (Locked onto exact structure inside zoom/pan wrapper) */}
-          {hasAutoTarget && (
+          {activeTarget && (
             <div
               className="absolute pointer-events-none z-20"
               style={{
-                left: `${term.targetX}%`,
-                top: `${term.targetY}%`,
+                left: `${activeTarget.x}%`,
+                top: `${activeTarget.y}%`,
                 transform: 'translate(-50%, -50%)',
               }}
             >

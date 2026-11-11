@@ -18,6 +18,7 @@ import { LibraryManagerView } from './components/LibraryManagerView';
 import { HistoryView } from './components/HistoryView';
 import { CustomPlateBuilderModal } from './components/CustomPlateBuilderModal';
 import { RosterModal } from './components/RosterModal';
+import { pickFallbackLaserSpot } from './utils/laserRandomizer';
 
 const STORAGE_HISTORY_KEY = 'anatomia_oral_history_v1';
 const STORAGE_CUSTOM_TERMS_KEY = 'anatomia_oral_custom_terms_v1';
@@ -209,7 +210,29 @@ export default function App() {
         cfg.termsPerSystem === 0
           ? randomizedSysPool
           : randomizedSysPool.slice(0, cfg.termsPerSystem);
-      perSystemResult.push(...chosen);
+
+      const usedSpots: Array<{ x: number; y: number }> = [];
+      const chosenWithLaser = chosen.map((item) => {
+        if (
+          item.customImageUrl &&
+          (item.targetX === undefined || item.targetY === undefined)
+        ) {
+          const spot = pickFallbackLaserSpot(usedSpots);
+          usedSpots.push(spot);
+          return {
+            ...item,
+            targetX: spot.x,
+            targetY: spot.y,
+            isAutoLaser: true,
+          };
+        }
+        if (item.targetX !== undefined && item.targetY !== undefined) {
+          usedSpots.push({ x: item.targetX, y: item.targetY });
+        }
+        return item;
+      });
+
+      perSystemResult.push(...chosenWithLaser);
     }
 
     return perSystemResult;

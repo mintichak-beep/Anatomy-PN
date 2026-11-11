@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, Plus, Trash2, Check, ListPlus, Crosshair, MapPinOff } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Upload, X, Plus, Trash2, Check, ListPlus, Crosshair, MapPinOff, Shuffle } from 'lucide-react';
 import {
   AnatomySystem,
   AnatomyTerm,
@@ -8,6 +8,7 @@ import {
   SystemId,
 } from '../types/anatomy';
 import { getSystemTheme } from '../data/systemThemes';
+import { analyzeImageSpots } from '../utils/laserRandomizer';
 
 interface CustomPlateBuilderModalProps {
   systems: AnatomySystem[];
@@ -65,6 +66,36 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
 
   const systemBankTerms = allTerms.filter((t) => t.systemId === systemId);
 
+  const randomizeAllLaserSpots = useCallback(
+    async (targetImageUrl: string, targetTerms?: CustomPlateTerm[]) => {
+      const list = targetTerms ?? terms;
+      if (!targetImageUrl || list.length === 0) return;
+      const spots = await analyzeImageSpots(targetImageUrl, list.length);
+      setTerms((prev) =>
+        prev.map((t, idx) => {
+          const spot = spots[idx];
+          if (!spot) return t;
+          return { ...t, targetX: spot.x, targetY: spot.y };
+        })
+      );
+      setActivePinTermId(null);
+    },
+    [terms]
+  );
+
+  useEffect(() => {
+    if (
+      initialImageUrl &&
+      !initialPlate &&
+      terms.length > 0 &&
+      terms.every((t) => t.targetX === undefined)
+    ) {
+      void randomizeAllLaserSpots(initialImageUrl, terms);
+    }
+    // Run once on initial quick upload mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSystemChange = (nextSys: SystemId) => {
     setSystemId(nextSys);
     if (!initialPlate) {
@@ -78,6 +109,9 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         }));
       setTerms(nextTerms);
       setActivePinTermId(nextTerms[0]?.id || null);
+      if (imageUrl && nextTerms.length > 0) {
+        void randomizeAllLaserSpots(imageUrl, nextTerms);
+      }
     }
   };
 
@@ -98,7 +132,11 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          setImageUrl(canvas.toDataURL('image/jpeg', 0.85));
+          const nextDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setImageUrl(nextDataUrl);
+          if (terms.length > 0 && terms.every((t) => t.targetX === undefined)) {
+            void randomizeAllLaserSpots(nextDataUrl, terms);
+          }
         }
       };
       if (typeof reader.result === 'string') {
@@ -279,10 +317,10 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {initialPlate ? 'แก้ไขภาพและกำหนดจุดเลเซอร์บนภาพ' : 'อัปโหลดภาพและกำหนดจุดเลเซอร์สำหรับสุ่มชี้'}
+              {initialPlate ? 'แก้ไขภาพและจุดเลเซอร์บนภาพ' : 'อัปโหลดภาพและสุ่มจุดเลเซอร์อัตโนมัติ'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              คลิกบนภาพเพื่อกำหนดตำแหน่งที่ต้องการให้ระบบสุ่มเลเซอร์ชี้ (หน้าทดสอบจริงจะไม่แสดงเฉลย)
+              ระบบสุ่มจุดเลเซอร์บนภาพให้อัตโนมัติ หรือคลิกบนภาพเพื่อกำหนดจุดด้วยตนเอง (หน้าสอบจริงจะไม่แสดงเฉลย)
             </p>
           </div>
           <button
@@ -418,8 +456,8 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
             </div>
 
             {imageUrl && (
-              <div className="flex items-center justify-between gap-2">
-                <label className="inline-flex items-center justify-center gap-2 flex-1 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer whitespace-nowrap">
                   <Upload className="w-3.5 h-3.5 text-slate-500" />
                   <span>เปลี่ยนรูปภาพ</span>
                   <input
@@ -431,15 +469,24 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
                 </label>
                 <button
                   type="button"
+                  onClick={() => void randomizeAllLaserSpots(imageUrl)}
+                  disabled={terms.length === 0}
+                  className="inline-flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 rounded-xl shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  <Shuffle className="w-3.5 h-3.5" />
+                  <span>สุ่มจุดเลเซอร์ให้อัตโนมัติ</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setActivePinTermId(null)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border transition-colors cursor-pointer whitespace-nowrap ${
                     activePinTermId === null
-                      ? 'bg-rose-50 text-rose-800 border-rose-300'
+                      ? 'bg-sky-50 text-sky-800 border-sky-300'
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
                   <Crosshair className="w-3.5 h-3.5" />
-                  <span>จิ้มจุดใหม่บนภาพ</span>
+                  <span>จิ้มจุดเอง</span>
                 </button>
               </div>
             )}
