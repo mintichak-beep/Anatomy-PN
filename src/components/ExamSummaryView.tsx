@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { AnatomySystem, ExamGrade, ExamSessionRecord, StudentRosterEntry } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
-import { SYSTEM_THEMES } from '../data/systemThemes';
+import { getSystemTheme } from '../data/systemThemes';
 
 interface ExamSummaryViewProps {
   session: ExamSessionRecord;
@@ -262,7 +262,7 @@ export const ExamSummaryView: React.FC<ExamSummaryViewProps> = ({
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {systemBreakdown.map((sb) => {
-              const st = SYSTEM_THEMES[sb.id];
+              const st = getSystemTheme(sb.id);
               return (
                 <div key={sb.id} className={`border ${st.softBorder} rounded-xl p-3.5 ${st.softBg}`}>
                   <div className="flex items-center justify-between gap-2 text-sm">
