@@ -63,6 +63,7 @@ export interface ExamConfig {
   studentId: string;
   seatNumber: string;
   selectedCustomPlateIds: string[];
+  examScope: 'all8' | 'uploadedOnly';
   termsPerSystem: number; // 1 = 1 term per system (actual exam), 2 = 2 per system, 0 = all
   secondsPerQuestion: number; // Default 30
   shuffle: boolean;

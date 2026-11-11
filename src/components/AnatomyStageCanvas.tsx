@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Crosshair, ImageOff } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Crosshair } from 'lucide-react';
 import { AnatomySystem, AnatomyTerm } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 import { getSystemTheme } from '../data/systemThemes';
@@ -197,10 +197,15 @@ export const AnatomyStageCanvas: React.FC<AnatomyStageCanvasProps> = ({
               className="w-full h-full object-contain"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center">
-              <ImageOff className="w-10 h-10 mb-2 text-slate-500" />
-              <p className="text-sm font-medium text-slate-200">{system.nameTh}</p>
-              <p className="text-xs text-slate-400 mt-1">ไม่พบรูปภาพสำหรับคำถามนี้</p>
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 p-8 text-center">
+              <div className={`w-14 h-14 rounded-2xl ${theme.iconBgFilled} text-white flex items-center justify-center mb-3 shadow-md`}>
+                <AnatomicalSystemIcon systemId={system.id} className="w-7 h-7" />
+              </div>
+              <p className="text-base md:text-lg font-bold text-white">{system.nameTh}</p>
+              <p className="text-xs font-mono text-sky-300 mt-0.5">{system.nameEn}</p>
+              <p className="text-xs md:text-sm text-slate-300 mt-3 max-w-md leading-relaxed">
+                สถานีสอบปากเปล่า · อาจารย์ชี้โครงสร้างบนหุ่นจำลองจริงในห้องปฏิบัติการ (ไม่แสดงคำเฉลย)
+              </p>
             </div>
           )}
 

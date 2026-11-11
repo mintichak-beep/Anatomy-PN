@@ -77,6 +77,7 @@ export default function App() {
     studentId: '',
     seatNumber: '',
     selectedCustomPlateIds: customPlates.map((p) => p.id),
+    examScope: 'all8',
     termsPerSystem: 1,
     secondsPerQuestion: 30,
     shuffle: false,
@@ -178,7 +179,13 @@ export default function App() {
         }
       }
 
-      if (sysPool.length === 0) continue;
+      if (sysPool.length === 0) {
+        if (cfg.examScope === 'uploadedOnly') continue;
+        // Include system using built-in/custom terms (no standard image) when testing all 8 systems
+        const bankTerms = allTerms.filter((t) => t.systemId === sys.id);
+        if (bankTerms.length === 0) continue;
+        sysPool.push(...bankTerms);
+      }
 
       // If instructor pinned laser spots for this system, randomly draw from the pinned spots
       const pinnedPool = sysPool.filter(

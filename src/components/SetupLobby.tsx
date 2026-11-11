@@ -113,15 +113,32 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
   );
 
   const selectedSystemsCovered = new Set(
-    selectedPlates.filter((p) => p.terms.length > 0).map((p) => p.systemId)
+    systems
+      .filter((sys) => {
+        const hasPlateTerms = selectedPlates.some(
+          (p) => p.systemId === sys.id && p.terms.length > 0
+        );
+        if (hasPlateTerms) return true;
+        return (
+          config.examScope === 'all8' &&
+          allTerms.some((t) => t.systemId === sys.id)
+        );
+      })
+      .map((s) => s.id)
   );
 
   const uploadedSystemsCount = new Set(customPlates.map((p) => p.systemId)).size;
 
   const effectiveQuestionCount = systems.reduce((total, sys) => {
-    const sysTermCount = selectedPlates
+    const plateTermCount = selectedPlates
       .filter((p) => p.systemId === sys.id)
       .reduce((acc, p) => acc + p.terms.length, 0);
+    const sysTermCount =
+      plateTermCount > 0
+        ? plateTermCount
+        : config.examScope === 'all8'
+        ? allTerms.filter((t) => t.systemId === sys.id).length
+        : 0;
     if (sysTermCount === 0) return total;
     if (config.termsPerSystem === 0) return total + sysTermCount;
     return total + Math.min(config.termsPerSystem, sysTermCount);
@@ -247,31 +264,6 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
               <BookOpen className="w-4 h-4 text-indigo-600" />
               <span>คลังคำศัพท์ 8 ระบบ</span>
             </button>
-          </div>
-        </div>
-
-        {/* Clean Unboxed Workflow Strip */}
-        <div className="mt-6 pt-5 border-t border-sky-100/90 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-sky-600 mt-0.5">01.</span>
-            <div>
-              <p className="font-semibold text-slate-900">อัปโหลดภาพทั้ง 8 ระบบ</p>
-              <p className="text-slate-600 mt-0.5">ใช้ภาพหุ่นจำลองหรือภาพกายวิภาคของอาจารย์เอง ไม่มีคลังภาพมาตรฐาน</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-emerald-600 mt-0.5">02.</span>
-            <div>
-              <p className="font-semibold text-slate-900">เลือกเลขที่ · รหัส · ชื่อผู้เข้าสอบ</p>
-              <p className="text-slate-600 mt-0.5">นำเข้ารายชื่อจาก Excel หรือเลือกจากบัญชีรายชื่อได้ทันที</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <span className="font-mono tabular-nums font-bold text-indigo-600 mt-0.5">03.</span>
-            <div>
-              <p className="font-semibold text-slate-900">สุ่มถามและประเมิน 0–2 คะแนน</p>
-              <p className="text-slate-600 mt-0.5">จับเวลา {config.secondsPerQuestion} วินาทีต่อคำ ไม่มีคำเฉลยขึ้นหน้าจอ</p>
-            </div>
           </div>
         </div>
       </div>
@@ -480,12 +472,16 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                         <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                           {sys.descriptionTh}
                         </p>
-                        {hasPlate && (
+                        {hasPlate ? (
                           <p className={`text-xs font-semibold ${theme.accentText} mt-1.5 flex items-center gap-1`}>
                             <Check className="w-3.5 h-3.5" />
-                            <span>อัปโหลดแล้ว {sysPlatesCount} ภาพ</span>
+                            <span>อัปโหลดแล้ว {sysPlatesCount} ภาพ · ใช้ภาพและเลเซอร์สอบ</span>
                           </p>
-                        )}
+                        ) : config.examScope === 'all8' ? (
+                          <p className="text-xs text-slate-500 mt-1.5">
+                            รวมอยู่ในคิวสอบทั้ง 8 ระบบ (หุ่นจำลองจริง / รออัปโหลดภาพ)
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -665,6 +661,35 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
                     className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Exam Scope: All 8 Systems vs Uploaded Only */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-slate-700">
+                  ขอบเขตระบบที่สอบ
+                </span>
+                <span className="text-xs text-sky-700 font-medium">ค่าเริ่มต้น: ครบ 8 ระบบ</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl">
+                {[
+                  { val: 'all8' as const, label: 'สอบทั้งหมด 8 ระบบ' },
+                  { val: 'uploadedOnly' as const, label: 'เฉพาะระบบที่เลือกภาพ' },
+                ].map((opt) => (
+                  <button
+                    key={opt.val}
+                    type="button"
+                    onClick={() => onChangeConfig({ ...config, examScope: opt.val })}
+                    className={`py-1.5 px-2 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                      config.examScope === opt.val
+                        ? 'bg-white text-sky-700 font-semibold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
