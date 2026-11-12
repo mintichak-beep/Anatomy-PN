@@ -22,6 +22,7 @@ import {
 } from '../types/anatomy';
 import { AnatomicalSystemIcon } from './AnatomicalSystemIcon';
 import { getSystemTheme } from '../data/systemThemes';
+import { compressImageFile } from '../utils/imageCompress';
 
 interface SetupLobbyProps {
   systems: AnatomySystem[];
@@ -82,30 +83,16 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
     });
   };
 
-  const handleQuickFileChange = (systemId: SystemId, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuickFileChange = async (systemId: SystemId, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 1080;
-        const scale = img.width > maxW ? maxW / img.width : 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          onQuickUploadForSystem(systemId, canvas.toDataURL('image/jpeg', 0.85));
-        }
-      };
-      if (typeof reader.result === 'string') {
-        img.src = reader.result;
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    if (!file) return;
+    try {
+      const compressedUrl = await compressImageFile(file);
+      onQuickUploadForSystem(systemId, compressedUrl);
+    } catch (err) {
+      console.error('Image compression failed:', err);
+    }
   };
 
   const selectedPlates = customPlates.filter((p) =>
@@ -161,8 +148,8 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
               <span aria-hidden="true" className="text-sky-300">·</span>
               <span>ระบบละ 1 คำ · 0–2 คะแนน</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-              การสอบปากเปล่าวิชา กายวิภาคศาสตร์
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+              กายวิภาคศาสตร์ (Oral Exam)
             </h1>
 
             {isEditingDesc ? (
@@ -246,23 +233,23 @@ export const SetupLobby: React.FC<SetupLobbyProps> = ({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => onOpenCustomPlateBuilder()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <ImagePlus className="w-4 h-4" />
-              <span>เพิ่มชุดภาพเอง</span>
+              <span>เพิ่มรูปภาพ</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenLibrary}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs md:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-sky-50/60 hover:border-sky-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-sky-50/60 transition-colors cursor-pointer"
             >
               <BookOpen className="w-4 h-4 text-indigo-600" />
-              <span>คลังคำศัพท์ 8 ระบบ</span>
+              <span className="hidden xs:inline">คลังคำศัพท์</span>
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   AnatomyTerm,
   AppView,
@@ -18,7 +18,6 @@ import { LibraryManagerView } from './components/LibraryManagerView';
 import { HistoryView } from './components/HistoryView';
 import { CustomPlateBuilderModal } from './components/CustomPlateBuilderModal';
 import { RosterModal } from './components/RosterModal';
-import { auth } from './firebase';
 import {
   syncCustomPlates,
   syncCustomTerms,
@@ -73,9 +72,28 @@ export default function App() {
   });
 
 
+  const seenPlateIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const unsubs = [
-      syncCustomPlates(setCustomPlates),
+      syncCustomPlates((plates) => {
+        setCustomPlates(plates);
+        const newIds: string[] = [];
+        for (const p of plates) {
+          if (!seenPlateIdsRef.current.has(p.id)) {
+            seenPlateIdsRef.current.add(p.id);
+            newIds.push(p.id);
+          }
+        }
+        if (newIds.length > 0) {
+          setConfig((prev) => ({
+            ...prev,
+            selectedCustomPlateIds: Array.from(
+              new Set([...prev.selectedCustomPlateIds, ...newIds])
+            ),
+          }));
+        }
+      }),
       syncCustomTerms(setCustomTerms),
       syncHistory(setHistory),
       syncRoster(setRoster),
@@ -316,7 +334,14 @@ export default function App() {
       return { ...s, answers: nextAnswers, totalScore: nextTotal };
     };
 
-    saveSessionToFirebase(updateRecord(activeSession!)); // Persistent update
+    const targetSession =
+      (activeSession && activeSession.id === sessionId
+        ? activeSession
+        : history.find((h) => h.id === sessionId)) || null;
+
+    if (targetSession) {
+      void saveSessionToFirebase(updateRecord(targetSession));
+    }
     setActiveSession((prev) => (prev ? updateRecord(prev) : prev));
   };
 
@@ -338,9 +363,9 @@ export default function App() {
           <button
             type="button"
             onClick={() => setView('setup')}
-            className="text-base md:text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer"
+            className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 truncate shrink min-w-0 cursor-pointer"
           >
-            การสอบปากเปล่าวิชา กายวิภาคศาสตร์
+            วิชา กายวิภาคศาสตร์
           </button>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -377,13 +402,13 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden lg:block text-right">
+            <div className="hidden sm:block text-right">
               <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 justify-end">
                 <Cloud className="w-3 h-3" />
-                SHARED SESSION
+                SHARED
               </p>
-              <p className="text-xs font-medium text-slate-600">
-                ข้อมูลเชื่อมโยงแบบ Real-time
+              <p className="text-[10px] font-medium text-slate-500">
+                Real-time
               </p>
             </div>
 

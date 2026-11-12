@@ -9,6 +9,7 @@ import {
 } from '../types/anatomy';
 import { getSystemTheme } from '../data/systemThemes';
 import { analyzeImageSpots } from '../utils/laserRandomizer';
+import { compressImageFile } from '../utils/imageCompress';
 
 interface CustomPlateBuilderModalProps {
   systems: AnatomySystem[];
@@ -115,35 +116,21 @@ export const CustomPlateBuilderModal: React.FC<CustomPlateBuilderModalProps> = (
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     setErrorMsg('');
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxW = 1080;
-        const scale = img.width > maxW ? maxW / img.width : 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const nextDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          setImageUrl(nextDataUrl);
-          if (terms.length > 0 && terms.every((t) => t.targetX === undefined)) {
-            void randomizeAllLaserSpots(nextDataUrl, terms);
-          }
-        }
-      };
-      if (typeof reader.result === 'string') {
-        img.src = reader.result;
+    try {
+      const nextDataUrl = await compressImageFile(file);
+      setImageUrl(nextDataUrl);
+      if (terms.length > 0 && terms.every((t) => t.targetX === undefined)) {
+        void randomizeAllLaserSpots(nextDataUrl, terms);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setErrorMsg('ไม่สามารถอ่านหรือบีบอัดไฟล์รูปภาพได้ กรุณาลองไฟล์อื่น');
+    }
   };
 
   const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {

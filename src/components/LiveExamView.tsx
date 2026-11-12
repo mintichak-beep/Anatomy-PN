@@ -258,32 +258,25 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
   return (
     <div className="max-w-[1320px] mx-auto px-4 md:px-6 py-5">
       {/* Top Session Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl px-4 md:px-5 py-3 flex flex-wrap items-center justify-between gap-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-slate-600">
+      <div className="bg-white border border-slate-200 rounded-2xl px-3 sm:px-5 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] sm:text-xs md:text-sm text-slate-600">
           {config.seatNumber.trim() && (
-            <>
-              <span className="font-mono tabular-nums font-semibold text-slate-900">
-                เลขที่ {config.seatNumber.trim()}
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono tabular-nums font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">
+                #{config.seatNumber.trim()}
               </span>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-            </>
+            </div>
           )}
-          <span className="font-bold text-slate-900">
-            {config.studentName.trim() || 'นักศึกษา (ไม่ระบุชื่อ)'}
+          <span className="font-bold text-slate-900 truncate max-w-[100px] sm:max-w-none">
+            {config.studentName.trim() || 'นักศึกษา'}
           </span>
-          {config.studentId.trim() && (
-            <>
-              <span aria-hidden="true" className="text-slate-300">·</span>
-              <span className="font-mono tabular-nums">{config.studentId.trim()}</span>
-            </>
-          )}
-          <span aria-hidden="true" className="text-slate-300">·</span>
-          <span className="font-mono tabular-nums font-semibold text-sky-700">
-            ข้อที่ {currentIndex + 1} / {terms.length} ({currentSystem.nameTh})
+          <span aria-hidden="true" className="text-slate-300">|</span>
+          <span className="font-mono tabular-nums font-bold text-sky-700">
+            ข้อ {currentIndex + 1}/{terms.length}
           </span>
-          <span aria-hidden="true" className="text-slate-300">·</span>
-          <span className="font-mono tabular-nums">
-            คะแนนสะสม {currentTotalScore} / {terms.length * 2}
+          <span aria-hidden="true" className="text-slate-300 hidden sm:inline">|</span>
+          <span className="font-mono tabular-nums font-medium hidden sm:inline">
+            {currentTotalScore} / {terms.length * 2} คะแนน
           </span>
         </div>
 
@@ -291,45 +284,37 @@ export const LiveExamView: React.FC<LiveExamViewProps> = ({
           <button
             type="button"
             onClick={() => setIsMuted((m) => !m)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            aria-label={isMuted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'}
+            className="p-1.5 sm:px-3 sm:py-1.5 text-[10px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-sky-600" />}
-            <span>{isMuted ? 'ปิดเสียง' : 'เปิดเสียง'}</span>
+            <span className="hidden sm:inline ml-1.5">{isMuted ? 'ปิดเสียง' : 'เปิดเสียง'}</span>
           </button>
 
           {confirmEnd ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={handleFinish}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-2 py-1.5 text-[10px] font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors cursor-pointer"
               >
-                ยืนยันสรุปคะแนน ({gradedCount}/{terms.length})
-              </button>
-              <button
-                type="button"
-                onClick={onCancelExam}
-                className="px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                ยกเลิกการสอบ
+                จบ ({gradedCount}/{terms.length})
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmEnd(false)}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 whitespace-nowrap shrink-0 cursor-pointer"
+                className="p-1.5 text-slate-500 bg-slate-100 rounded-lg"
               >
-                กลับ
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => setConfirmEnd(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Flag className="w-3.5 h-3.5 text-teal-700" />
-              <span>จบและสรุปผล</span>
+              <span className="hidden xs:inline">สรุปผล</span>
             </button>
           )}
         </div>

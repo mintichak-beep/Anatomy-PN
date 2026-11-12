@@ -7,14 +7,8 @@ service cloud.firestore {
     }
 
     // --- Helpers ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
     function incoming() {
       return request.resource.data;
-    }
-    function existing() {
-      return resource.data;
     }
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
@@ -27,17 +21,21 @@ service cloud.firestore {
         && data.id is string && data.id.size() <= 128
         && data.title is string && data.title.size() <= 200
         && data.systemId is string && data.systemId.size() <= 50
-        && data.imageUrl is string && data.imageUrl.size() <= 2000
-        && data.terms is list && data.terms.size() <= 100
-        && data.createdAt is string; // Simplified for client sync, ideally server timestamp
+        && data.imageUrl is string && data.imageUrl.size() <= 950000
+        && data.terms is list && data.terms.size() <= 200
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 128));
     }
 
     function isValidAnatomyTerm(data) {
       return data.keys().hasAll(['id', 'systemId', 'termEn', 'termTh', 'isCustom'])
         && data.keys().hasOnly(['id', 'systemId', 'termEn', 'termLatin', 'termTh', 'isCustom', 'createdAt'])
         && data.id is string && data.id.size() <= 128
+        && data.systemId is string && data.systemId.size() <= 50
         && data.termEn is string && data.termEn.size() <= 200
         && data.termTh is string && data.termTh.size() <= 200
+        && (!('termLatin' in data) || (data.termLatin is string && data.termLatin.size() <= 200))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
         && data.isCustom == true;
     }
 
@@ -45,15 +43,27 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'seatNumber', 'studentName'])
         && data.keys().hasOnly(['id', 'seatNumber', 'studentId', 'studentName', 'createdAt'])
         && data.id is string && data.id.size() <= 128
-        && data.seatNumber is string && data.seatNumber.size() <= 20
-        && data.studentName is string && data.studentName.size() <= 200;
+        && data.seatNumber is string && data.seatNumber.size() <= 50
+        && (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 100))
+        && data.studentName is string && data.studentName.size() <= 200
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
     }
 
     function isValidHistoryRecord(data) {
       return data.keys().hasAll(['id', 'studentName', 'systemIds', 'totalQuestions', 'totalScore', 'maxScore', 'startedAt', 'completedAt', 'answers'])
+        && data.keys().hasOnly(['id', 'studentName', 'studentId', 'seatNumber', 'systemIds', 'totalQuestions', 'totalScore', 'maxScore', 'secondsPerQuestion', 'startedAt', 'completedAt', 'answers'])
         && data.id is string && data.id.size() <= 128
-        && data.totalScore is int && data.totalScore >= 0
-        && data.answers is list && data.answers.size() <= 50;
+        && data.studentName is string && data.studentName.size() <= 200
+        && (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 100))
+        && (!('seatNumber' in data) || (data.seatNumber is string && data.seatNumber.size() <= 50))
+        && data.systemIds is list && data.systemIds.size() <= 20
+        && data.totalQuestions is int && data.totalQuestions >= 0 && data.totalQuestions <= 500
+        && data.totalScore is int && data.totalScore >= 0 && data.totalScore <= 1000
+        && data.maxScore is int && data.maxScore >= 0 && data.maxScore <= 1000
+        && (!('secondsPerQuestion' in data) || (data.secondsPerQuestion is int && data.secondsPerQuestion >= 0 && data.secondsPerQuestion <= 3600))
+        && data.startedAt is string && data.startedAt.size() <= 64
+        && data.completedAt is string && data.completedAt.size() <= 64
+        && data.answers is list && data.answers.size() <= 500;
     }
 
     // --- Matches ---
@@ -84,7 +94,9 @@ service cloud.firestore {
 
     match /settings/exam {
       allow read: if true;
-      allow write: if incoming().keys().hasOnly(['examDescription', 'updatedAt']);
+      allow write: if incoming().keys().hasOnly(['examDescription', 'updatedAt'])
+        && (!('examDescription' in incoming()) || (incoming().examDescription is string && incoming().examDescription.size() <= 5000))
+        && (!('updatedAt' in incoming()) || (incoming().updatedAt is string && incoming().updatedAt.size() <= 64));
     }
   }
 }

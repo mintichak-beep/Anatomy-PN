@@ -273,10 +273,10 @@ export const RosterModal: React.FC<RosterModalProps> = ({
                   <table className="w-full text-left border-collapse text-xs">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold sticky top-0">
                       <tr>
-                        <th className="py-2.5 px-3 w-16">เลขที่</th>
-                        <th className="py-2.5 px-3 w-36">รหัสประจำตัว</th>
+                        <th className="py-2.5 px-3 w-12 sm:w-16">#</th>
+                        <th className="py-2.5 px-3 w-28 sm:w-36">รหัส</th>
                         <th className="py-2.5 px-3">ชื่อ-นามสกุล</th>
-                        <th className="py-2.5 px-3 text-right w-32">จัดการ</th>
+                        <th className="py-2.5 px-3 text-right w-24 sm:w-32">จัดการ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
