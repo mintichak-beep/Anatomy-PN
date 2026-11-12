@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Validation Functions ---
+    function isValidCustomPlate(data) {
+      return data.keys().hasAll(['id', 'title', 'systemId', 'imageUrl', 'terms', 'createdAt'])
+        && data.keys().hasOnly(['id', 'title', 'systemId', 'imageUrl', 'terms', 'createdAt', 'updatedBy'])
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.systemId is string && data.systemId.size() <= 50
+        && data.imageUrl is string && data.imageUrl.size() <= 2000
+        && data.terms is list && data.terms.size() <= 100
+        && data.createdAt is string; // Simplified for client sync, ideally server timestamp
+    }
+
+    function isValidAnatomyTerm(data) {
+      return data.keys().hasAll(['id', 'systemId', 'termEn', 'termTh', 'isCustom'])
+        && data.keys().hasOnly(['id', 'systemId', 'termEn', 'termLatin', 'termTh', 'isCustom', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.termEn is string && data.termEn.size() <= 200
+        && data.termTh is string && data.termTh.size() <= 200
+        && data.isCustom == true;
+    }
+
+    function isValidRosterEntry(data) {
+      return data.keys().hasAll(['id', 'seatNumber', 'studentName'])
+        && data.keys().hasOnly(['id', 'seatNumber', 'studentId', 'studentName', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.seatNumber is string && data.seatNumber.size() <= 20
+        && data.studentName is string && data.studentName.size() <= 200;
+    }
+
+    function isValidHistoryRecord(data) {
+      return data.keys().hasAll(['id', 'studentName', 'systemIds', 'totalQuestions', 'totalScore', 'maxScore', 'startedAt', 'completedAt', 'answers'])
+        && data.id is string && data.id.size() <= 128
+        && data.totalScore is int && data.totalScore >= 0
+        && data.answers is list && data.answers.size() <= 50;
+    }
+
+    // --- Matches ---
+
+    match /plates/{plateId} {
+      allow read: if true;
+      allow create, update: if isValidId(plateId) && isValidCustomPlate(incoming());
+      allow delete: if isValidId(plateId);
+    }
+
+    match /customTerms/{termId} {
+      allow read: if true;
+      allow create, update: if isValidId(termId) && isValidAnatomyTerm(incoming());
+      allow delete: if isValidId(termId);
+    }
+
+    match /roster/{studentId} {
+      allow read: if true;
+      allow create, update: if isValidId(studentId) && isValidRosterEntry(incoming());
+      allow delete: if isValidId(studentId);
+    }
+
+    match /history/{sessionId} {
+      allow read: if true;
+      allow create, update: if isValidId(sessionId) && isValidHistoryRecord(incoming());
+      allow delete: if isValidId(sessionId);
+    }
+
+    match /settings/exam {
+      allow read: if true;
+      allow write: if incoming().keys().hasOnly(['examDescription', 'updatedAt']);
+    }
+  }
+}

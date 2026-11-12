@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "CustomPlate": {
+      "title": "Custom Anatomy Plate",
+      "description": "An instructor-uploaded anatomical image with pinned laser targets.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "systemId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "terms": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["id", "title", "systemId", "imageUrl", "terms", "createdAt"]
+    },
+    "AnatomyTerm": {
+      "title": "Anatomy Term",
+      "description": "A custom anatomical term added to the global library.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "systemId": { "type": "string" },
+        "termEn": { "type": "string" },
+        "termLatin": { "type": "string" },
+        "termTh": { "type": "string" },
+        "isCustom": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "systemId", "termEn", "termTh", "isCustom"]
+    },
+    "StudentRosterEntry": {
+      "title": "Student Roster Entry",
+      "description": "A student in the class roster.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "seatNumber": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "seatNumber", "studentName"]
+    },
+    "ExamSessionRecord": {
+      "title": "Exam Session Record",
+      "description": "A completed exam session with scores and feedback.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentId": { "type": "string" },
+        "seatNumber": { "type": "string" },
+        "systemIds": { "type": "array" },
+        "totalQuestions": { "type": "integer" },
+        "totalScore": { "type": "integer" },
+        "maxScore": { "type": "integer" },
+        "secondsPerQuestion": { "type": "integer" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "answers": { "type": "array" }
+      },
+      "required": ["id", "studentName", "systemIds", "totalQuestions", "totalScore", "maxScore", "startedAt", "completedAt", "answers"]
+    },
+    "GlobalSettings": {
+      "title": "Global Exam Settings",
+      "description": "Shared configuration for the exam environment.",
+      "type": "object",
+      "properties": {
+        "examDescription": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/plates/{plateId}": {
+      "schema": "CustomPlate",
+      "description": "Collection of custom instructor plates."
+    },
+    "/customTerms/{termId}": {
+      "schema": "AnatomyTerm",
+      "description": "Collection of user-added anatomical terms."
+    },
+    "/roster/{studentId}": {
+      "schema": "StudentRosterEntry",
+      "description": "The class roster."
+    },
+    "/history/{sessionId}": {
+      "schema": "ExamSessionRecord",
+      "description": "The examination history records."
+    },
+    "/settings/exam": {
+      "schema": "GlobalSettings",
+      "description": "Singleton document for shared exam settings."
+    }
+  }
+}

@@ -18,13 +18,28 @@ import { LibraryManagerView } from './components/LibraryManagerView';
 import { HistoryView } from './components/HistoryView';
 import { CustomPlateBuilderModal } from './components/CustomPlateBuilderModal';
 import { RosterModal } from './components/RosterModal';
-import { pickFallbackLaserSpot } from './utils/laserRandomizer';
+import { auth } from './firebase';
+import {
+  syncCustomPlates,
+  syncCustomTerms,
+  syncHistory,
+  syncRoster,
+  syncSettings,
+  savePlateToFirebase,
+  deletePlateFromFirebase,
+  saveTermToFirebase,
+  deleteTermFromFirebase,
+  saveRosterToFirebase,
+  saveRosterEntryToFirebase,
+  deleteRosterEntryFromFirebase,
+  saveSessionToFirebase,
+  deleteSessionFromFirebase,
+  clearHistoryInFirebase,
+  clearRosterInFirebase,
+  updateExamDescriptionInFirebase,
+} from './services/firebaseSync';
+import { Cloud } from 'lucide-react';
 
-const STORAGE_HISTORY_KEY = 'anatomia_oral_history_v1';
-const STORAGE_CUSTOM_TERMS_KEY = 'anatomia_oral_custom_terms_v1';
-const STORAGE_CUSTOM_PLATES_KEY = 'anatomia_oral_custom_plates_v1';
-const STORAGE_ROSTER_KEY = 'anatomia_oral_roster_v1';
-const STORAGE_EXAM_DESCRIPTION_KEY = 'anatomia_oral_description_v1';
 
 function shuffleArray<T>(items: T[]): T[] {
   const arr = [...items];
@@ -35,43 +50,15 @@ function shuffleArray<T>(items: T[]): T[] {
   return arr;
 }
 
-function safeLoadArray<T>(key: string): T[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 export default function App() {
   const [view, setView] = useState<AppView>('setup');
 
-  const [customTerms, setCustomTerms] = useState<AnatomyTerm[]>(() =>
-    safeLoadArray<AnatomyTerm>(STORAGE_CUSTOM_TERMS_KEY)
-  );
-
-  const [customPlates, setCustomPlates] = useState<CustomPlate[]>(() =>
-    safeLoadArray<CustomPlate>(STORAGE_CUSTOM_PLATES_KEY)
-  );
-
-  const [history, setHistory] = useState<ExamSessionRecord[]>(() =>
-    safeLoadArray<ExamSessionRecord>(STORAGE_HISTORY_KEY)
-  );
-
-  const [roster, setRoster] = useState<StudentRosterEntry[]>(() =>
-    safeLoadArray<StudentRosterEntry>(STORAGE_ROSTER_KEY)
-  );
-
-  const [examDescription, setExamDescription] = useState<string>(() => {
-    try {
-      return localStorage.getItem(STORAGE_EXAM_DESCRIPTION_KEY) || '';
-    } catch {
-      return '';
-    }
-  });
+  const [customTerms, setCustomTerms] = useState<AnatomyTerm[]>([]);
+  const [customPlates, setCustomPlates] = useState<CustomPlate[]>([]);
+  const [history, setHistory] = useState<ExamSessionRecord[]>([]);
+  const [roster, setRoster] = useState<StudentRosterEntry[]>([]);
+  const [examDescription, setExamDescription] = useState<string>('');
 
   const [config, setConfig] = useState<ExamConfig>({
     studentName: '',
@@ -85,6 +72,18 @@ export default function App() {
     autoStartTimer: true,
   });
 
+
+  useEffect(() => {
+    const unsubs = [
+      syncCustomPlates(setCustomPlates),
+      syncCustomTerms(setCustomTerms),
+      syncHistory(setHistory),
+      syncRoster(setRoster),
+      syncSettings(setExamDescription),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, []);
+
   const [activeExamTerms, setActiveExamTerms] = useState<AnatomyTerm[]>([]);
   const [activeSession, setActiveSession] = useState<ExamSessionRecord | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -93,45 +92,8 @@ export default function App() {
   const [builderQuickImageUrl, setBuilderQuickImageUrl] = useState<string>('');
   const [rosterOpen, setRosterOpen] = useState(false);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_CUSTOM_TERMS_KEY, JSON.stringify(customTerms));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [customTerms]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_CUSTOM_PLATES_KEY, JSON.stringify(customPlates));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [customPlates]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(history));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [history]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_ROSTER_KEY, JSON.stringify(roster));
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [roster]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_EXAM_DESCRIPTION_KEY, examDescription);
-    } catch {
-      // Ignore storage quota errors
-    }
-  }, [examDescription]);
+  // Local state persistence removed in favor of Firebase sync
+  // (Dependencies on user for sync handled above)
 
   const allTerms = useMemo(
     () => [...customTerms, ...BUILT_IN_TERMS],
@@ -210,29 +172,7 @@ export default function App() {
         cfg.termsPerSystem === 0
           ? randomizedSysPool
           : randomizedSysPool.slice(0, cfg.termsPerSystem);
-
-      const usedSpots: Array<{ x: number; y: number }> = [];
-      const chosenWithLaser = chosen.map((item) => {
-        if (
-          item.customImageUrl &&
-          (item.targetX === undefined || item.targetY === undefined)
-        ) {
-          const spot = pickFallbackLaserSpot(usedSpots);
-          usedSpots.push(spot);
-          return {
-            ...item,
-            targetX: spot.x,
-            targetY: spot.y,
-            isAutoLaser: true,
-          };
-        }
-        if (item.targetX !== undefined && item.targetY !== undefined) {
-          usedSpots.push({ x: item.targetX, y: item.targetY });
-        }
-        return item;
-      });
-
-      perSystemResult.push(...chosenWithLaser);
+      perSystemResult.push(...chosen);
     }
 
     return perSystemResult;
@@ -266,7 +206,7 @@ export default function App() {
       answers,
     };
 
-    setHistory((prev) => [session, ...prev]);
+    saveSessionToFirebase(session);
     setActiveSession(session);
     setView('summary');
   };
@@ -323,11 +263,11 @@ export default function App() {
   };
 
   const handleAddCustomTerm = (term: AnatomyTerm) => {
-    setCustomTerms((prev) => [term, ...prev]);
+    saveTermToFirebase(term);
   };
 
   const handleDeleteCustomTerm = (id: string) => {
-    setCustomTerms((prev) => prev.filter((t) => t.id !== id));
+    deleteTermFromFirebase(id);
   };
 
   const handleQuickUploadForSystem = (systemId: SystemId, imageUrl: string) => {
@@ -338,13 +278,7 @@ export default function App() {
   };
 
   const handleSaveCustomPlate = (plate: CustomPlate) => {
-    setCustomPlates((prev) => {
-      const exists = prev.some((p) => p.id === plate.id);
-      if (exists) {
-        return prev.map((p) => (p.id === plate.id ? plate : p));
-      }
-      return [plate, ...prev];
-    });
+    savePlateToFirebase(plate);
     setConfig((prev) => ({
       ...prev,
       selectedCustomPlateIds: prev.selectedCustomPlateIds.includes(plate.id)
@@ -357,7 +291,7 @@ export default function App() {
   };
 
   const handleDeleteCustomPlate = (id: string) => {
-    setCustomPlates((prev) => prev.filter((p) => p.id !== id));
+    deletePlateFromFirebase(id);
     setConfig((prev) => ({
       ...prev,
       selectedCustomPlateIds: prev.selectedCustomPlateIds.filter((pid) => pid !== id),
@@ -365,11 +299,11 @@ export default function App() {
   };
 
   const handleDeleteSession = (id: string) => {
-    setHistory((prev) => prev.filter((s) => s.id !== id));
+    deleteSessionFromFirebase(id);
   };
 
   const handleClearAllHistory = () => {
-    setHistory([]);
+    clearHistoryInFirebase(history);
   };
 
   const handleUpdateItemScore = (sessionId: string, termId: string, newScore: ExamGrade) => {
@@ -382,7 +316,7 @@ export default function App() {
       return { ...s, answers: nextAnswers, totalScore: nextTotal };
     };
 
-    setHistory((prev) => prev.map(updateRecord));
+    saveSessionToFirebase(updateRecord(activeSession!)); // Persistent update
     setActiveSession((prev) => (prev ? updateRecord(prev) : prev));
   };
 
@@ -397,8 +331,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-atlas-grid text-slate-900">
+
       {/* Top Bar Contract: 3 zones separated by gap-8 */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200/90">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xs border-b border-slate-200/90 shadow-sm">
         <div className="max-w-[1320px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-8">
           <button
             type="button"
@@ -441,7 +376,18 @@ export default function App() {
             </button>
           </nav>
 
-          <div className="shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden lg:block text-right">
+              <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 justify-end">
+                <Cloud className="w-3 h-3" />
+                SHARED SESSION
+              </p>
+              <p className="text-xs font-medium text-slate-600">
+                ข้อมูลเชื่อมโยงแบบ Real-time
+              </p>
+            </div>
+
+            <div className="shrink-0">
             {view === 'exam' ? (
               <button
                 type="button"
@@ -460,6 +406,7 @@ export default function App() {
                 เริ่มสอบทันที
               </button>
             )}
+          </div>
           </div>
         </div>
 
@@ -506,7 +453,7 @@ export default function App() {
             history={history}
             config={config}
             examDescription={examDescription}
-            onChangeExamDescription={setExamDescription}
+            onChangeExamDescription={updateExamDescriptionInFirebase}
             onChangeConfig={setConfig}
             onStartExam={() => startExamWithConfig(config)}
             onOpenLibrary={() => setView('library')}
@@ -592,7 +539,10 @@ export default function App() {
       {rosterOpen && (
         <RosterModal
           roster={roster}
-          onSaveRoster={setRoster}
+          onAddEntry={saveRosterEntryToFirebase}
+          onAddBatch={saveRosterToFirebase}
+          onDeleteEntry={deleteRosterEntryFromFirebase}
+          onClearAll={() => clearRosterInFirebase(roster)}
           onSelectStudent={(stu) =>
             setConfig((prev) => ({
               ...prev,
@@ -604,6 +554,7 @@ export default function App() {
           onClose={() => setRosterOpen(false)}
         />
       )}
+
     </div>
   );
 }

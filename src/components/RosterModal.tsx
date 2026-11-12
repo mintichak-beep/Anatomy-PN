@@ -4,7 +4,10 @@ import { StudentRosterEntry } from '../types/anatomy';
 
 interface RosterModalProps {
   roster: StudentRosterEntry[];
-  onSaveRoster: (next: StudentRosterEntry[]) => void;
+  onAddEntry: (entry: StudentRosterEntry) => void;
+  onAddBatch: (entries: StudentRosterEntry[]) => void;
+  onDeleteEntry: (id: string) => void;
+  onClearAll: () => void;
   onSelectStudent: (entry: StudentRosterEntry) => void;
   onClose: () => void;
 }
@@ -70,7 +73,10 @@ function parseRosterText(raw: string): StudentRosterEntry[] {
 
 export const RosterModal: React.FC<RosterModalProps> = ({
   roster,
-  onSaveRoster,
+  onAddEntry,
+  onAddBatch,
+  onDeleteEntry,
+  onClearAll,
   onSelectStudent,
   onClose,
 }) => {
@@ -89,7 +95,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
       studentId: studentId.trim(),
       studentName: studentName.trim(),
     };
-    onSaveRoster([...roster, entry]);
+    onAddEntry(entry);
     setSeatNumber('');
     setStudentId('');
     setStudentName('');
@@ -98,7 +104,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
   const handleImportPaste = () => {
     const entries = parseRosterText(pasteText);
     if (entries.length === 0) return;
-    onSaveRoster([...roster, ...entries]);
+    onAddBatch(entries);
     setPasteText('');
     setTab('list');
   };
@@ -111,7 +117,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
       if (typeof reader.result === 'string') {
         const entries = parseRosterText(reader.result);
         if (entries.length > 0) {
-          onSaveRoster([...roster, ...entries]);
+          onAddBatch(entries);
           setTab('list');
         }
       }
@@ -120,7 +126,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    onSaveRoster(roster.filter((r) => r.id !== id));
+    onDeleteEntry(id);
   };
 
   const handleGenerateSeats = (count: number) => {
@@ -130,7 +136,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
       studentId: '',
       studentName: `นักศึกษา เลขที่ ${idx + 1}`,
     }));
-    onSaveRoster([...roster, ...generated]);
+    onAddBatch(generated);
   };
 
   const handleDownloadSampleCsv = () => {
@@ -201,7 +207,7 @@ export const RosterModal: React.FC<RosterModalProps> = ({
           {roster.length > 0 && (
             <button
               type="button"
-              onClick={() => onSaveRoster([])}
+              onClick={onClearAll}
               className="text-xs text-slate-500 hover:text-rose-600 cursor-pointer"
             >
               ล้างรายชื่อทั้งหมด
